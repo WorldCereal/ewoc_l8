@@ -74,9 +74,11 @@ def run_l8_plan(plan_json, out_dir):
                 qa_upload_name = ard_from_key(ref_name,s2_tile)+'_QA.tif'
                 upload_file(s3c,os.path.join(qa_tmp_folder,'hrmn_L8_qa.tif'),bucket,os.path.join(prefix,qa_upload_name))
                 shutil.rmtree(qa_tmp_folder)
+                shutil.rmtree(os.path.join(out_dir, 'tmp',date))
             except:
                 print('Failed for group\n')
                 print(tr_group)
+
 
 if __name__ == '__main__':
     cli()
