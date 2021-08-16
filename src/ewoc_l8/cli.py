@@ -2,7 +2,7 @@ import os
 
 import click
 import shutil
-from utils import *
+from ewoc_l8.utils import *
 from dataship.dag.utils import get_bounds
 from dataship.dag.s3man import get_s3_client,upload_file
 
@@ -18,7 +18,7 @@ def cli():
 def run_l8_plan(plan_json, out_dir):
     s3c = get_s3_client()
     bucket = "world-cereal"
-    prefix = "test_up_tir"
+    prefix = os.getenv("DEST_PREFIX")
     plan = json_to_dict(plan_json)
     for s2_tile in plan:
         t_srs = get_tile_proj(s2_tile)
@@ -46,6 +46,7 @@ def run_l8_plan(plan_json, out_dir):
                 qa_name = os.path.split(q)[-1]
                 download_s3file(q,os.path.join(qa_tmp_folder,qa_name),'usgs-landsat')
             try:
+                ref_name = b10[0]
                 ## B10
                 for raster in os.listdir(b10_tmp_folder):
                     raster = os.path.join(b10_tmp_folder,raster)
@@ -56,7 +57,7 @@ def run_l8_plan(plan_json, out_dir):
                 os.system(cmd_vrt)
                 cmd_clip =f"gdalwarp -te {bnds[0]} {bnds[1]} {bnds[2]} {bnds[3]} {b10_tmp_folder}/hrmn_L8_b10.vrt {b10_tmp_folder}/hrmn_L8_b10.tif "
                 os.system(cmd_clip)
-                b10_upload_name = ard_from_key(b10[0],s2_tile)+'_B10.tif'
+                b10_upload_name = ard_from_key(ref_name,s2_tile)+'_B10.tif'
                 upload_file(s3c,os.path.join(b10_tmp_folder,'hrmn_L8_b10.tif'),bucket,os.path.join(prefix,b10_upload_name))
                 shutil.rmtree(b10_tmp_folder)
 
@@ -70,8 +71,8 @@ def run_l8_plan(plan_json, out_dir):
                 os.system(cmd_vrt)
                 cmd_clip =f"gdalwarp -te {bnds[0]} {bnds[1]} {bnds[2]} {bnds[3]} {qa_tmp_folder}/hrmn_L8_qa.vrt {qa_tmp_folder}/hrmn_L8_qa.tif "
                 os.system(cmd_clip)
-                qa_upload_name = ard_from_key(qa[0],s2_tile)+'_QA.tif'
-                upload_file(s3c,os.path.join(qa_tmp_folder,'hrmn_L8_qa.vrt'),bucket,os.path.join(prefix,qa_upload_name))
+                qa_upload_name = ard_from_key(ref_name,s2_tile)+'_QA.tif'
+                upload_file(s3c,os.path.join(qa_tmp_folder,'hrmn_L8_qa.tif'),bucket,os.path.join(prefix,qa_upload_name))
                 shutil.rmtree(qa_tmp_folder)
             except:
                 print('Failed for group\n')
