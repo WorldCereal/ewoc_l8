@@ -127,7 +127,6 @@ def run_id(pid_group,s2_tile,out_dir):
         b10_upload_name = ard_from_key(ref_name, s2_tile) + '_B10.tif'
         upload_file(s3c, os.path.join(b10_tmp_folder, 'hrmn_L8_b10.tif'), bucket, os.path.join(prefix, b10_upload_name))
         shutil.rmtree(b10_tmp_folder)
-
         ## QA
         for raster in os.listdir(qa_tmp_folder):
             raster = os.path.join(qa_tmp_folder, raster)
