@@ -1,5 +1,6 @@
 import json
 import os
+import rasterio
 from eotile.eotile_module import main
 
 import boto3
@@ -33,7 +34,6 @@ def ard_from_key(key,s2_tile,out_dir=None):
     return raster_fn
 
 
-
 def download_s3file(s3_full_key,out_file, bucket):
     """
     Download file from s3 object storage
@@ -48,6 +48,7 @@ def download_s3file(s3_full_key,out_file, bucket):
     with open(out_file, "wb") as f:
         for chunk in iter(lambda: resp["Body"].read(4096), b""):
             f.write(chunk)
+
 def get_tile_proj(s2tile):
     res = main(s2tile)[0]
     srs = res['SRS'].values
