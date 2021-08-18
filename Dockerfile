@@ -22,4 +22,8 @@ RUN apt-get install -y gdal-bin
 RUN pip3 install -U setuptools setuptools_scm wheel
 RUN pip3 install .
 
+RUN pip3 install boto3 \
+  && pip3 install botocore \
+  && pip3 install psycopg2-binary
+
 ENTRYPOINT ["ewoc_l8"]
