@@ -13,13 +13,17 @@ RUN apt-get update -y && apt-get install -y python3-pip git gdal-bin \
     && rm -rf /var/lib/apt/lists/*
 RUN pip3 install --no-cache-dir -U pip
 
+ARG EOTILE_VERSION=0.2rc3
+LABEL EOTILE="${EOTILE_VERSION}"
 ## Install dataship and eotile
-ADD eotile-0.2rc3-py3-none-any.whl /opt
-RUN pip3 install --no-cache-dir /opt/eotile-0.2rc3-py3-none-any.whl
+ADD eotile-${EOTILE_VERSION}-py3-none-any.whl /opt
+RUN pip3 install --no-cache-dir /opt/eotile-${EOTILE_VERSION}-py3-none-any.whl
 
 
-COPY dataship-0.1.4.tar.gz /opt
-RUN pip3 install --no-cache-dir /opt/dataship-0.1.4.tar.gz
+ARG DATASHIP_VERSION=0.1.4
+LABEL DATASHIP="${DATASHIP_VERSION}"
+COPY dataship-${DATASHIP_VERSION}.tar.gz /opt
+RUN pip3 install --no-cache-dir /opt/dataship-${DATASHIP_VERSION}.tar.gz
 
 RUN pip3 install --no-cache-dir -U setuptools setuptools_scm wheel
 RUN pip3 install --no-cache-dir .
