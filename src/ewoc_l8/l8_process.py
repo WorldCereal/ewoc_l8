@@ -60,7 +60,7 @@ def process_group_band(band_num,tr_group,t_srs,s2_tile,bnds,res,out_dir):
         logging.info('Failed for group\n')
         logging.info(tr_group)
 
-def process_group(tr_group,t_srs,s2_tile, bnds,out_dir,only_tir=True):
+def process_group(tr_group,t_srs,s2_tile, bnds,out_dir,only_tir):
     """
     Process a group of Landsat-8 ids, full bands or thermal only
     :param tr_group: A list of s3 ids for Landsat-8 raster on the usgs-landsat bucket
@@ -77,7 +77,7 @@ def process_group(tr_group,t_srs,s2_tile, bnds,out_dir,only_tir=True):
     else:
         process_bands = ['B2','B3','B4','B5','B6','B7','B10','QA']
     for band in process_bands:
-        process_group_band(band,tr_group,t_srs,s2_tile,bnds,res_dict[band],out_dir)
+        process_group_band(band,tr_group,t_srs,s2_tile,bnds,res = res_dict[band], out_dir=out_dir)
 
 
 def get_band_key(band,tr):
