@@ -1,13 +1,35 @@
-import os
+import logging
+import sys
 
 import click
-import shutil
-from ewoc_l8.utils import *
 from dataship.dag.utils import get_bounds
-from dataship.dag.s3man import get_s3_client,upload_file
 
+from ewoc_l8.l8_process import process_group
+from ewoc_l8.utils import *
+
+logger = logging.getLogger(__name__)
+
+def set_logger(verbose_v):
+    """
+    Set the logger level
+    :param loglevel:
+    :return:
+    """
+    v_to_level = {"v": "INFO", "vv": "DEBUG"}
+    loglevel = v_to_level[verbose_v]
+    logformat = "[%(asctime)s] %(levelname)s:%(name)s:%(message)s"
+    logging.basicConfig(
+        level=loglevel, stream=sys.stdout, format=logformat, datefmt="%Y-%m-%d %H:%M:%S"
+    )
 
 @click.group()
+@click.option(
+    "--verbose",
+    type=click.Choice(["v", "vv"]),
+    default="vv",
+    help="Set verbosity level: v for info, vv for debug",
+    required=True,
+)
 def cli():
     click.secho("Landsat-8", fg="green", bold=True)
 
@@ -15,136 +37,27 @@ def cli():
 @cli.command('l8_plan', help="Landsat-8 with a full plan as input")
 @click.option('-p', '--plan_json', help="EWoC Plan in json format")
 @click.option('-o', '--out_dir',help="Output directory")
-def run_l8_plan(plan_json, out_dir):
-    s3c = get_s3_client()
-    bucket = "world-cereal"
-    prefix = os.getenv("DEST_PREFIX")
+@click.option('ot','--only_tir', default = True, help="Get only thermal bands")
+def run_l8_plan(plan_json, out_dir, only_tir):
     plan = json_to_dict(plan_json)
     for s2_tile in plan:
         t_srs = get_tile_proj(s2_tile)
         l8_tirs = plan[s2_tile]['L8_TIRS']
         bnds = get_bounds(s2_tile)
         for tr_group in l8_tirs:
-            b10 = []
-            qa = []
-            date = ""
-            for tr in tr_group:
-                date = os.path.split(tr)[-1].split('_')[3]
-                b10.append(tr)
-                qa.append(tr.replace('ST_B10','ST_QA'))
-            b10_tmp_folder = os.path.join(out_dir,"tmp",date,'B10')
-            qa_tmp_folder = os.path.join(out_dir,"tmp",date,'qa')
-            make_dir(b10_tmp_folder)
-            make_dir(qa_tmp_folder)
-            # Remove duplicates
-            b10 = list(set(b10))
-            qa = list(set(qa))
-            for b in b10:
-                b10_name = os.path.split(b)[-1]
-                download_s3file(b,os.path.join(b10_tmp_folder,b10_name),'usgs-landsat')
-            for q in qa:
-                qa_name = os.path.split(q)[-1]
-                download_s3file(q,os.path.join(qa_tmp_folder,qa_name),'usgs-landsat')
-            try:
-                ref_name = b10[0]
-                ## B10
-                for raster in os.listdir(b10_tmp_folder):
-                    raster = os.path.join(b10_tmp_folder,raster)
-                    cmd_proj = f"gdalwarp -t_srs {t_srs} {raster} {raster[:-4]}_r.tif"
-                    os.system(cmd_proj)
-                raster_list = " ".join([os.path.join(b10_tmp_folder, rst) for rst in os.listdir(b10_tmp_folder) if rst.endswith('_r.tif')])
-                cmd_vrt = f"gdalbuildvrt {b10_tmp_folder}/hrmn_L8_b10.vrt {raster_list}"
-                os.system(cmd_vrt)
-                cmd_clip =f"gdalwarp -te {bnds[0]} {bnds[1]} {bnds[2]} {bnds[3]} {b10_tmp_folder}/hrmn_L8_b10.vrt {b10_tmp_folder}/hrmn_L8_b10.tif "
-                os.system(cmd_clip)
-                b10_upload_name = ard_from_key(ref_name,s2_tile)+'_B10.tif'
-                upload_file(s3c,os.path.join(b10_tmp_folder,'hrmn_L8_b10.tif'),bucket,os.path.join(prefix,b10_upload_name))
-                shutil.rmtree(b10_tmp_folder)
-
-                ## QA
-                for raster in os.listdir(qa_tmp_folder):
-                    raster = os.path.join(qa_tmp_folder,raster)
-                    cmd_proj = f"gdalwarp -t_srs {t_srs} {raster} {raster[:-4]}_r.tif"
-                    os.system(cmd_proj)
-                raster_list = " ".join([os.path.join(qa_tmp_folder, rst) for rst in os.listdir(qa_tmp_folder) if rst.endswith('_r.tif')])
-                cmd_vrt = f"gdalbuildvrt {qa_tmp_folder}/hrmn_L8_qa.vrt {raster_list}"
-                os.system(cmd_vrt)
-                cmd_clip =f"gdalwarp -te {bnds[0]} {bnds[1]} {bnds[2]} {bnds[3]} {qa_tmp_folder}/hrmn_L8_qa.vrt {qa_tmp_folder}/hrmn_L8_qa.tif "
-                os.system(cmd_clip)
-                qa_upload_name = ard_from_key(ref_name,s2_tile)+'_QA.tif'
-                upload_file(s3c,os.path.join(qa_tmp_folder,'hrmn_L8_qa.tif'),bucket,os.path.join(prefix,qa_upload_name))
-                shutil.rmtree(qa_tmp_folder)
-                shutil.rmtree(os.path.join(out_dir, 'tmp',date))
-            except:
-                print('Failed for group\n')
-                print(tr_group)
+            process_group(tr_group,t_srs,bnds=bnds,out_dir=out_dir, only_tir=only_tir)
 
 
-@cli.command('l8_id', help="Get thermal bands for one day")
-@click.option('-pid', '--pid_group', help="Landsat-8 thermal bands group of ids")
+@cli.command('l8_id', help="Get Landsat-8 product for one id/day")
+@click.option('-pid', '--pid_group', help="Landsat-8 group of ids (same date), separeted by space")
 @click.option('-t', '--s2_tile', help="Landsat-8 thermal bands group of ids")
 @click.option('-o', '--out_dir',help="Output directory")
-def run_id(pid_group,s2_tile,out_dir):
-    s3c = get_s3_client()
-    bucket = "world-cereal"
-    prefix = os.getenv("DEST_PREFIX")
+@click.option('ot','--only_tir', default = True, help="Get only thermal bands")
+def run_id(pid_group,s2_tile,out_dir, only_tir):
     tr_group = pid_group.split(' ')
     t_srs = get_tile_proj(s2_tile)
     bnds = get_bounds(s2_tile)
-    b10 = []
-    qa = []
-    date = ""
-    for tr in tr_group:
-        date = os.path.split(tr)[-1].split('_')[3]
-        b10.append(tr)
-        qa.append(tr.replace('ST_B10', 'ST_QA'))
-    b10_tmp_folder = os.path.join(out_dir, "tmp", date, 'B10')
-    qa_tmp_folder = os.path.join(out_dir, "tmp", date, 'qa')
-    make_dir(b10_tmp_folder)
-    make_dir(qa_tmp_folder)
-    # Remove duplicates
-    b10 = list(set(b10))
-    qa = list(set(qa))
-    for b in b10:
-        b10_name = os.path.split(b)[-1]
-        download_s3file(b, os.path.join(b10_tmp_folder, b10_name), 'usgs-landsat')
-    for q in qa:
-        qa_name = os.path.split(q)[-1]
-        download_s3file(q, os.path.join(qa_tmp_folder, qa_name), 'usgs-landsat')
-    try:
-        ref_name = b10[0]
-        ## B10
-        for raster in os.listdir(b10_tmp_folder):
-            raster = os.path.join(b10_tmp_folder, raster)
-            cmd_proj = f"gdalwarp -t_srs {t_srs} {raster} {raster[:-4]}_r.tif"
-            os.system(cmd_proj)
-        raster_list = " ".join(
-            [os.path.join(b10_tmp_folder, rst) for rst in os.listdir(b10_tmp_folder) if rst.endswith('_r.tif')])
-        cmd_vrt = f"gdalbuildvrt {b10_tmp_folder}/hrmn_L8_b10.vrt {raster_list}"
-        os.system(cmd_vrt)
-        cmd_clip = f"gdalwarp -te {bnds[0]} {bnds[1]} {bnds[2]} {bnds[3]} {b10_tmp_folder}/hrmn_L8_b10.vrt {b10_tmp_folder}/hrmn_L8_b10.tif "
-        os.system(cmd_clip)
-        b10_upload_name = ard_from_key(ref_name, s2_tile) + '_B10.tif'
-        upload_file(s3c, os.path.join(b10_tmp_folder, 'hrmn_L8_b10.tif'), bucket, os.path.join(prefix, b10_upload_name))
-        shutil.rmtree(b10_tmp_folder)
-
-        ## QA
-        for raster in os.listdir(qa_tmp_folder):
-            raster = os.path.join(qa_tmp_folder, raster)
-            cmd_proj = f"gdalwarp -t_srs {t_srs} {raster} {raster[:-4]}_r.tif"
-            os.system(cmd_proj)
-        raster_list = " ".join(
-            [os.path.join(qa_tmp_folder, rst) for rst in os.listdir(qa_tmp_folder) if rst.endswith('_r.tif')])
-        cmd_vrt = f"gdalbuildvrt {qa_tmp_folder}/hrmn_L8_qa.vrt {raster_list}"
-        os.system(cmd_vrt)
-        cmd_clip = f"gdalwarp -te {bnds[0]} {bnds[1]} {bnds[2]} {bnds[3]} {qa_tmp_folder}/hrmn_L8_qa.vrt {qa_tmp_folder}/hrmn_L8_qa.tif "
-        os.system(cmd_clip)
-        qa_upload_name = ard_from_key(ref_name, s2_tile) + '_QA.tif'
-        upload_file(s3c, os.path.join(qa_tmp_folder, 'hrmn_L8_qa.tif'), bucket, os.path.join(prefix, qa_upload_name))
-        shutil.rmtree(qa_tmp_folder)
-    except:
-        print('Failed for group\n')
-        print(tr_group)
+    process_group(tr_group, t_srs, bnds,out_dir, only_tir)
 
 
 if __name__ == '__main__':
