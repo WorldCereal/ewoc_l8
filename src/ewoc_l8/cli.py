@@ -45,7 +45,13 @@ def cli(verbose):
 @click.option("-p", "--plan_json", help="EWoC Plan in json format")
 @click.option("-o", "--out_dir", help="Output directory")
 @click.option("-ot", "--only_tir", default=True, help="Get only thermal bands")
-def run_l8_plan(plan_json, out_dir, only_tir):
+@click.option(
+    "-d",
+    "--debug",
+    default=False,
+    help="If True all the intermediate files and results will be kept locally",
+)
+def run_l8_plan(plan_json, out_dir, only_tir, debug):
     """
     Run the Landsat-8 processer over a json plan
     :param plan_json: EWoC Plan in json format
@@ -65,6 +71,7 @@ def run_l8_plan(plan_json, out_dir, only_tir):
                 bnds=bnds,
                 out_dir=out_dir,
                 only_tir=only_tir,
+                debug=debug,
             )
 
 
@@ -75,7 +82,13 @@ def run_l8_plan(plan_json, out_dir, only_tir):
 @click.option("-t", "--s2_tile", help="Sentinel-2 tile id")
 @click.option("-o", "--out_dir", help="Output directory")
 @click.option("-ot", "--only_tir", default=True, help="Get only thermal bands")
-def run_id(pid_group, s2_tile, out_dir, only_tir):
+@click.option(
+    "-d",
+    "--debug",
+    default=False,
+    help="If True all the intermediate files and results will be kept locally",
+)
+def run_id(pid_group, s2_tile, out_dir, only_tir, debug):
     """
     Run Landsat-8 processor for one day
     :param pid_group: Landsat-8 group of ids (same date), separeted by space
@@ -87,7 +100,7 @@ def run_id(pid_group, s2_tile, out_dir, only_tir):
     t_srs = get_tile_proj(s2_tile)
     bnds = get_bounds(s2_tile)
     process_group(
-        tr_group, t_srs, s2_tile=s2_tile, bnds=bnds, out_dir=out_dir, only_tir=only_tir
+        tr_group, t_srs, s2_tile=s2_tile, bnds=bnds, out_dir=out_dir, only_tir=only_tir, debug=debug
     )
 
 

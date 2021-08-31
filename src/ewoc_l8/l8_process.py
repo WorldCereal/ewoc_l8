@@ -9,7 +9,7 @@ from dataship.dag.s3man import upload_file, get_s3_client
 
 logger = logging.getLogger(__name__)
 
-def process_group_band(band_num,tr_group,t_srs,s2_tile,bnds,res,out_dir):
+def process_group_band(band_num,tr_group,t_srs,s2_tile,bnds,res,out_dir,debug):
     """
     Process Landsat-8 band: Download, merge and clip to S2 tile footprint
     For one band, one date
@@ -20,6 +20,7 @@ def process_group_band(band_num,tr_group,t_srs,s2_tile,bnds,res,out_dir):
     :param bnds: Extent of the Sentinel-2 tile, you can get this using the function get_bounds from dataship/ewoc_dag
     :param res: Resampling resolution, could be 10 or 20 meters
     :param out_dir: Output directory to store the temporary results, should be deleted on full completion
+    :param debug: If True all the intermediate files and results will be kept locally
     :return: Nothing
     """
     # Create list of same bands but different dates
@@ -62,9 +63,10 @@ def process_group_band(band_num,tr_group,t_srs,s2_tile,bnds,res,out_dir):
         logging.info('Failed for group\n')
         logging.info(tr_group)
     finally:
-        shutil.rmtree(src_folder)
+        if not debug:
+            shutil.rmtree(src_folder)
 
-def process_group(tr_group,t_srs,s2_tile, bnds,out_dir,only_tir):
+def process_group(tr_group,t_srs,s2_tile, bnds,out_dir,only_tir,debug):
     """
     Process a group of Landsat-8 ids, full bands or thermal only
     :param tr_group: A list of s3 ids for Landsat-8 raster on the usgs-landsat bucket
@@ -73,6 +75,7 @@ def process_group(tr_group,t_srs,s2_tile, bnds,out_dir,only_tir):
     :param bnds: Extent of the Sentinel-2 tile, you can get this using the function get_bounds from dataship/ewoc_dag
     :param out_dir: Output directory to store the temporary results, should be deleted on full completion
     :param only_tir: Set to False to get all the following bands B2/B3/B4/B5/B6/B7/B10/QA, True by default
+    :param debug: If True all the intermediate files and results will be kept locally
     :return: Nothing
     """
     res_dict={'B2':'10','B3':'10','B4':'10','B5':'10','B6':'20','B7':'20','B10':None,'QA':None}
@@ -82,7 +85,7 @@ def process_group(tr_group,t_srs,s2_tile, bnds,out_dir,only_tir):
         process_bands = ['B2','B3','B4','B5','B6','B7','B10','QA']
     for band in process_bands:
         logging.info(f'Processing {band}')
-        process_group_band(band,tr_group,t_srs,s2_tile,bnds,res = res_dict[band], out_dir=out_dir)
+        process_group_band(band,tr_group,t_srs,s2_tile,bnds,res = res_dict[band], out_dir=out_dir,debug=debug)
 
 
 def get_band_key(band,tr):
@@ -144,4 +147,5 @@ if __name__ == "__main__":
         "s3://usgs-landsat/collection02/level-2/standard/oli-tirs/2019/200/035/LC08_L2SP_200035_20190321_20200829_02_T1/LC08_L2SP_200035_20190321_20200829_02_T1_ST_B10.TIF",
         "s3://usgs-landsat/collection02/level-2/standard/oli-tirs/2019/200/034/LC08_L2SP_200034_20190321_20200829_02_T1/LC08_L2SP_200034_20190321_20200829_02_T1_ST_B10.TIF"]
     # process_group_band("B2",tr_group, t_srs, s2_tile, bnds, out_dir)
-    process_group(tr_group, t_srs, s2_tile, bnds, out_dir, only_tir=False)
+    # Run a full (SR + TIR) test with debug mode
+    process_group(tr_group, t_srs, s2_tile, bnds, out_dir, only_tir=False,debug=True)
