@@ -48,14 +48,17 @@ def process_group_band(band_num,tr_group,t_srs,s2_tile,bnds,res,out_dir):
                 cmd_proj = f"gdalwarp -t_srs {t_srs} {raster} {raster[:-4]}_r.tif"
             os.system(cmd_proj)
         raster_list = " ".join([os.path.join(tmp_folder, rst) for rst in os.listdir(tmp_folder) if rst.endswith('_r.tif')])
+        logging.info("Starting VRT creation")
         cmd_vrt = f"gdalbuildvrt -q {tmp_folder}/hrmn_L8_band.vrt {raster_list}"
         os.system(cmd_vrt)
+        logging.info("Starting Clip to S2 extent")
         cmd_clip = f"gdalwarp -te {bnds[0]} {bnds[1]} {bnds[2]} {bnds[3]} {tmp_folder}/hrmn_L8_band.vrt {tmp_folder}/hrmn_L8_band.tif "
         os.system(cmd_clip)
         upload_name = ard_from_key(ref_name, s2_tile) + f'_{band_num}.tif'
+        logging.info("Converting to EWoC ARD")
         raster_to_ard(os.path.join(tmp_folder, 'hrmn_L8_band.tif'),band_num,os.path.join(tmp_folder, 'hrmn_L8_band_block.tif'))
         upload_file(s3c, os.path.join(tmp_folder, 'hrmn_L8_band_block.tif'), "world-cereal", os.path.join(prefix, upload_name))
-        shutil.rmtree(src_folder)
+        #shutil.rmtree(src_folder)
     except:
         logging.info('Failed for group\n')
         logging.info(tr_group)
@@ -77,6 +80,7 @@ def process_group(tr_group,t_srs,s2_tile, bnds,out_dir,only_tir):
     else:
         process_bands = ['B2','B3','B4','B5','B6','B7','B10','QA']
     for band in process_bands:
+        logging.info(f'Processing {band}')
         process_group_band(band,tr_group,t_srs,s2_tile,bnds,res = res_dict[band], out_dir=out_dir)
 
 
