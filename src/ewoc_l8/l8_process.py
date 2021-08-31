@@ -58,10 +58,11 @@ def process_group_band(band_num,tr_group,t_srs,s2_tile,bnds,res,out_dir):
         logging.info("Converting to EWoC ARD")
         raster_to_ard(os.path.join(tmp_folder, 'hrmn_L8_band.tif'),band_num,os.path.join(tmp_folder, 'hrmn_L8_band_block.tif'))
         upload_file(s3c, os.path.join(tmp_folder, 'hrmn_L8_band_block.tif'), "world-cereal", os.path.join(prefix, upload_name))
-        #shutil.rmtree(src_folder)
     except:
         logging.info('Failed for group\n')
         logging.info(tr_group)
+    finally:
+        shutil.rmtree(src_folder)
 
 def process_group(tr_group,t_srs,s2_tile, bnds,out_dir,only_tir):
     """
