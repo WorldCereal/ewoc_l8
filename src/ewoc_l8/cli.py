@@ -74,7 +74,6 @@ def run_l8_plan(plan_json, out_dir, only_tir, debug):
                 debug=debug,
             )
 
-
 @cli.command("l8_id", help="Get Landsat-8 product for one id/day")
 @click.option(
     "-pid", "--pid_group", help="Landsat-8 group of ids (same date), separeted by space"
