@@ -3,7 +3,7 @@ import os
 import shutil
 
 import rasterio
-from ewoc_l8.utils import ard_from_key,make_dir
+from ewoc_l8.utils import ard_from_key,make_dir, binary_sr_qa
 from dataship.dag.utils import download_s3file
 from dataship.dag.s3man import upload_file, get_s3_client
 
@@ -24,6 +24,12 @@ def process_group_band(band_num,tr_group,t_srs,s2_tile,bnds,res,out_dir,debug):
     :return: Nothing
     """
     # Create list of same bands but different dates
+    if band_num == "QA_AEROSOL":
+        sr_method = "near"
+        band_num_alias = "MASK"
+    else:
+        sr_method = "bilinear"
+        band_num_alias = band_num
     bucket = "usgs-landsat"
     prefix = os.getenv("DEST_PREFIX")
     group_bands = []
@@ -41,10 +47,11 @@ def process_group_band(band_num,tr_group,t_srs,s2_tile,bnds,res,out_dir,debug):
         raster_fn = os.path.join(tmp_folder,os.path.split(band)[-1][:-11])
         download_s3file(band, raster_fn, bucket)
     try:
+        logging.info("Starting Re-projection")
         for raster in os.listdir(tmp_folder):
             raster = os.path.join(tmp_folder, raster)
             if res is not None:
-                cmd_proj = f"gdalwarp -tr {res} {res} -t_srs {t_srs} {raster} {raster[:-4]}_r.tif"
+                cmd_proj = f"gdalwarp -tr {res} {res} -r {sr_method} -t_srs {t_srs} {raster} {raster[:-4]}_r.tif"
             else:
                 cmd_proj = f"gdalwarp -t_srs {t_srs} {raster} {raster[:-4]}_r.tif"
             os.system(cmd_proj)
@@ -55,10 +62,15 @@ def process_group_band(band_num,tr_group,t_srs,s2_tile,bnds,res,out_dir,debug):
         logging.info("Starting Clip to S2 extent")
         cmd_clip = f"gdalwarp -te {bnds[0]} {bnds[1]} {bnds[2]} {bnds[3]} {tmp_folder}/hrmn_L8_band.vrt {tmp_folder}/hrmn_L8_band.tif "
         os.system(cmd_clip)
-        upload_name = ard_from_key(ref_name, s2_tile) + f'_{band_num}.tif'
+        upload_name = ard_from_key(ref_name,band_num=band_num, s2_tile=s2_tile) + f'_{band_num_alias}.tif'
         logging.info("Converting to EWoC ARD")
-        raster_to_ard(os.path.join(tmp_folder, 'hrmn_L8_band.tif'),band_num,os.path.join(tmp_folder, 'hrmn_L8_band_block.tif'))
-        upload_file(s3c, os.path.join(tmp_folder, 'hrmn_L8_band_block.tif'), "world-cereal", os.path.join(prefix, upload_name))
+        if band_num == "QA_AEROSOL":
+            binary_sr_qa(os.path.join(tmp_folder, 'hrmn_L8_band.tif'))
+            upload_file(s3c, os.path.join(tmp_folder, 'hrmn_L8_band.tif'), "world-cereal",
+                        os.path.join(prefix, upload_name))
+        else:
+            raster_to_ard(os.path.join(tmp_folder, 'hrmn_L8_band.tif'),band_num,os.path.join(tmp_folder, 'hrmn_L8_band_block.tif'))
+            upload_file(s3c, os.path.join(tmp_folder, 'hrmn_L8_band_block.tif'), "world-cereal", os.path.join(prefix, upload_name))
     except:
         logging.info('Failed for group\n')
         logging.info(tr_group)
@@ -78,11 +90,11 @@ def process_group(tr_group,t_srs,s2_tile, bnds,out_dir,only_tir,debug):
     :param debug: If True all the intermediate files and results will be kept locally
     :return: Nothing
     """
-    res_dict={'B2':'10','B3':'10','B4':'10','B5':'10','B6':'20','B7':'20','B10':None,'QA':None}
+    res_dict={'B2':'10','B3':'10','B4':'10','B5':'10','B6':'20','B7':'20','B10':None,'QA':None,'QA_AEROSOL':'20'}
     if only_tir:
         process_bands = ['B10','QA']
     else:
-        process_bands = ['B2','B3','B4','B5','B6','B7','B10','QA']
+        process_bands = ['QA_AEROSOL','B2','B3','B4','B5','B6','B7','B10','QA']
     for band in process_bands:
         logging.info(f'Processing {band}')
         process_group_band(band,tr_group,t_srs,s2_tile,bnds,res = res_dict[band], out_dir=out_dir,debug=debug)
@@ -95,7 +107,7 @@ def get_band_key(band,tr):
     :param tr: Thermal band s3 id
     :return: date of the product and the s3 key
     """
-    sr_bands = ['B2','B3','B4','B5','B6','B7']
+    sr_bands = ['B2','B3','B4','B5','B6','B7','QA_AEROSOL']
     st_bands = ['B10','QA']
     base = tr[:-11]
     date = os.path.split(tr)[-1].split('_')[3]
