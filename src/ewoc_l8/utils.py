@@ -1,9 +1,13 @@
 import json
+import logging
 import os
+
+import boto3
+import numpy as np
 import rasterio
 from eotile.eotile_module import main
 
-import boto3
+logger = logging.getLogger(__name__)
 
 def json_to_dict(path_to_json):
     with open(path_to_json) as f:
@@ -14,17 +18,26 @@ def make_dir(fold_dir):
     if not os.path.exists(fold_dir):
         os.makedirs(fold_dir)
 
-def ard_from_key(key,s2_tile,out_dir=None):
+def ard_from_key(key,s2_tile,band_num,out_dir=None):
+    sr_bands = ['B2','B3','B4','B5','B6','B7','QA_AEROSOL']
+    st_bands = ['B10','QA']
+    if band_num in sr_bands:
+        measure_type = "OPTICAL"
+    elif band_num in st_bands:
+        measure_type = "TIR"
+    else:
+        logging.error("Unknown band")
     product_id = os.path.split(key)[-1]
     platform = product_id.split('_')[0]
     processing_level = product_id.split('_')[1]
+    processing_level_folder = "L1T"
     date = product_id.split('_')[3]
     year = date[:4]
     # Get tile id , remove the T in the beginning
     tile_id = s2_tile
     unique_id = f"{product_id.split('_')[2]}{product_id.split('_')[5]}{product_id.split('_')[6]}"
-    folder_st = os.path.join('TIR', tile_id[:2], tile_id[2], tile_id[3:], year,date.split('T')[0])
-    dir_name = f"{platform}_{processing_level}_{date}_{unique_id}_{tile_id}"
+    folder_st = os.path.join(measure_type, tile_id[:2], tile_id[2], tile_id[3:], year,date.split('T')[0])
+    dir_name = f"{platform}_{processing_level_folder}_{date}_{unique_id}_{tile_id}"
     out_name = f"{platform}_{processing_level}_{date}_{unique_id}_{tile_id}"
     raster_fn = os.path.join(folder_st, dir_name, out_name)
     if out_dir is not None:
@@ -32,6 +45,28 @@ def ard_from_key(key,s2_tile,out_dir=None):
         if not os.path.exists(tmp):
             os.makedirs(tmp)
     return raster_fn
+
+def binary_sr_qa(sr_qa_file):
+    src = rasterio.open(sr_qa_file, "r")
+    meta = src.meta.copy()
+    ds = src.read(1)
+    clear_px = [2, 4, 32, 66, 68, 96, 100, 130, 132, 160, 164]
+    msk = np.isin(ds,clear_px).astype(int)
+    ds[msk==1]=1
+    ds[msk==0]=0
+    raster_fn = sr_qa_file
+    with rasterio.open(
+            raster_fn,
+            "w+",
+            **meta,
+            compress="deflate",
+            tiled=True,
+            blockxsize=1024,
+            blockysize=1024,
+    ) as out:
+        out.write(ds.astype(rasterio.uint8), 1)
+    src.close()
+    logging.info("Binary cloud mask - Done")
 
 
 def download_s3file(s3_full_key,out_file, bucket):
