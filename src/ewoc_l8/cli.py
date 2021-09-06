@@ -103,6 +103,5 @@ def run_id(pid_group, s2_tile, out_dir, only_tir, debug):
         tr_group, t_srs, s2_tile=s2_tile, bnds=bnds, out_dir=out_dir, only_tir=only_tir, debug=debug
     )
 
-
 if __name__ == "__main__":
     cli()
