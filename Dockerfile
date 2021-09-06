@@ -20,7 +20,7 @@ ADD eotile-${EOTILE_VERSION}-py3-none-any.whl /opt
 RUN pip3 install --no-cache-dir /opt/eotile-${EOTILE_VERSION}-py3-none-any.whl
 
 
-ARG DATASHIP_VERSION=0.1.4
+ARG DATASHIP_VERSION=0.1.8
 LABEL DATASHIP="${DATASHIP_VERSION}"
 COPY dataship-${DATASHIP_VERSION}.tar.gz /opt
 RUN pip3 install --no-cache-dir /opt/dataship-${DATASHIP_VERSION}.tar.gz

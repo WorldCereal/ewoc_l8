@@ -78,7 +78,7 @@ def process_group_band(band_num,tr_group,t_srs,s2_tile,bnds,res,out_dir,debug):
         if not debug:
             shutil.rmtree(src_folder)
 
-def process_group(tr_group,t_srs,s2_tile, bnds,out_dir,only_tir,debug):
+def process_group(tr_group,t_srs,s2_tile, bnds,out_dir,sr,debug):
     """
     Process a group of Landsat-8 ids, full bands or thermal only
     :param tr_group: A list of s3 ids for Landsat-8 raster on the usgs-landsat bucket
@@ -86,15 +86,16 @@ def process_group(tr_group,t_srs,s2_tile, bnds,out_dir,only_tir,debug):
     :param s2_tile: The id of the targeted Sentinel-2 ex 31TCJ (Toulouse)
     :param bnds: Extent of the Sentinel-2 tile, you can get this using the function get_bounds from dataship/ewoc_dag
     :param out_dir: Output directory to store the temporary results, should be deleted on full completion
-    :param only_tir: Set to False to get all the following bands B2/B3/B4/B5/B6/B7/B10/QA, True by default
+    :param sr: Set to True to get all the following bands B2/B3/B4/B5/B6/B7/B10/QA, False by default
     :param debug: If True all the intermediate files and results will be kept locally
     :return: Nothing
     """
     res_dict={'B2':'10','B3':'10','B4':'10','B5':'10','B6':'20','B7':'20','B10':None,'QA':None,'QA_AEROSOL':'20'}
-    if only_tir:
-        process_bands = ['B10','QA']
+    if sr:
+        process_bands = ['QA_AEROSOL', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B10', 'QA']
     else:
-        process_bands = ['QA_AEROSOL','B2','B3','B4','B5','B6','B7','B10','QA']
+        process_bands = ['B10', 'QA']
+
     for band in process_bands:
         logging.info(f'Processing {band}')
         process_group_band(band,tr_group,t_srs,s2_tile,bnds,res = res_dict[band], out_dir=out_dir,debug=debug)
@@ -160,4 +161,4 @@ if __name__ == "__main__":
         "s3://usgs-landsat/collection02/level-2/standard/oli-tirs/2019/200/034/LC08_L2SP_200034_20190321_20200829_02_T1/LC08_L2SP_200034_20190321_20200829_02_T1_ST_B10.TIF"]
     # process_group_band("B2",tr_group, t_srs, s2_tile, bnds, out_dir)
     # Run a full (SR + TIR) test with debug mode
-    process_group(tr_group, t_srs, s2_tile, bnds, out_dir, only_tir=False,debug=True)
+    process_group(tr_group, t_srs, s2_tile, bnds, out_dir, sr=True,debug=True)
