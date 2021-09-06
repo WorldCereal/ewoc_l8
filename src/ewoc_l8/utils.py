@@ -61,8 +61,8 @@ def binary_sr_qa(sr_qa_file):
             **meta,
             compress="deflate",
             tiled=True,
-            blockxsize=1024,
-            blockysize=1024,
+            blockxsize=512,
+            blockysize=512,
     ) as out:
         out.write(ds.astype(rasterio.uint8), 1)
     src.close()

@@ -90,11 +90,11 @@ def process_group(tr_group,t_srs,s2_tile, bnds,out_dir,only_tir,debug):
     :param debug: If True all the intermediate files and results will be kept locally
     :return: Nothing
     """
-    res_dict={'B2':'10','B3':'10','B4':'10','B5':'10','B6':'20','B7':'20','B10':None,'QA':None,"QA_AEROSOL":'20'}
+    res_dict={'B2':'10','B3':'10','B4':'10','B5':'10','B6':'20','B7':'20','B10':None,'QA':None,'QA_AEROSOL':'20'}
     if only_tir:
         process_bands = ['B10','QA']
     else:
-        process_bands = ['B2','B3','B4','B5','B6','B7','B10','QA','QA_AEROSOL']
+        process_bands = ['QA_AEROSOL','B2','B3','B4','B5','B6','B7','B10','QA']
     for band in process_bands:
         logging.info(f'Processing {band}')
         process_group_band(band,tr_group,t_srs,s2_tile,bnds,res = res_dict[band], out_dir=out_dir,debug=debug)
