@@ -24,12 +24,13 @@ def process_group_band(band_num,tr_group,t_srs,s2_tile,bnds,res,out_dir,debug):
     :return: Nothing
     """
     # Create list of same bands but different dates
+    l8_to_s2={'B2':'B02','B3':'B03','B4':'B04','B5':'B08','B6':'B11','B7':'B12'}
     if band_num == "QA_AEROSOL":
         sr_method = "near"
         band_num_alias = "MASK"
     else:
         sr_method = "bilinear"
-        band_num_alias = band_num
+        band_num_alias = l8_to_s2[band_num]
     bucket = "usgs-landsat"
     prefix = os.getenv("DEST_PREFIX")
     group_bands = []
