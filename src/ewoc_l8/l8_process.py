@@ -24,7 +24,7 @@ def process_group_band(band_num,tr_group,t_srs,s2_tile,bnds,res,out_dir,debug):
     :return: Nothing
     """
     # Create list of same bands but different dates
-    l8_to_s2={'B2':'B02','B3':'B03','B4':'B04','B5':'B08','B6':'B11','B7':'B12'}
+    l8_to_s2={'B2':'B02','B3':'B03','B4':'B04','B5':'B08','B6':'B11','B7':'B12','B10':'B10','QA':'QA'}
     if band_num == "QA_AEROSOL":
         sr_method = "near"
         band_num_alias = "MASK"
