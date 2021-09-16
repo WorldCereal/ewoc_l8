@@ -3,7 +3,7 @@ import os
 import shutil
 
 import rasterio
-from ewoc_l8.utils import ard_from_key,make_dir, binary_sr_qa
+from ewoc_l8.utils import ard_from_key,make_dir, binary_sr_qa, key_from_id
 from dataship.dag.utils import download_s3file
 from dataship.dag.s3man import upload_file, get_s3_client
 
@@ -36,6 +36,7 @@ def process_group_band(band_num,tr_group,t_srs,s2_tile,bnds,res,out_dir,debug):
     group_bands = []
     s3c = get_s3_client()
     for tr in tr_group:
+        tr = key_from_id(tr)
         date,key = get_band_key(band_num,tr)
         group_bands.append(key)
     tmp_folder = os.path.join(out_dir,"tmp",date, band_num)

@@ -88,3 +88,12 @@ def get_tile_proj(s2tile):
     res = main(s2tile)[0]
     srs = res['SRS'].values
     return srs[0]
+
+def key_from_id(pid):
+    info = pid.split('_')
+    date1 = info[3]
+    date2 = info[4]
+    year = info[3][:4]
+    path, row = info[2][:3],info[2][3:]
+    key = f"s3://usgs-landsat/collection02/level-2/standard/oli-tirs/{year}/{path}/{row}/LC08_L2SP_{path}{row}_{date1}_{date2}_02_T1/LC08_L2SP_{path}{row}_{date1}_{date2}_02_T1_ST_B10.TIF"
+    return key
