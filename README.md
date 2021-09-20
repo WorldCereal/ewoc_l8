@@ -18,12 +18,11 @@ You can also pull the latest docker image from the harbour or ecr registry
 Docker
 
 ```bash
-sudo docker run -ti --rm --env-file env.dev ewoc_l8 --verbose v l8_id -pid "s3://usgs-landsat/collection02/level-2/standard/oli-tirs/2019/222/067/LC08_L2SP_222067_20190315_20200829_02_T1/LC08_L2SP_222067_20190315_20200829_02_T1_ST_B10.TIF s3://usgs-landsat/collection02/level-2/standard/oli-tirs/2019/222/066/LC08_L2SP_222066_20190315_20200829_02_T1/LC08_L2SP_222066_20190315_20200829_02_T1_ST_B10.TIF" 
--t 22LHQ -o ../../test_d_l8/test_debug --sr
+sudo docker run -ti --rm --env-file env.dev ewoc_l8 --verbose v l8_id -pid "LC08_L1TP_201035_20191022_20200825_02_T1 LC08_L1TP_201034_20191022_20200825_02_T1" -t 30STG -o ../out
 ```
 
 Python on host 
 
 ```bash
-python ewoc_l8 l8_id -pid "s3://usgs-landsat/collection02/level-2/standard/oli-tirs/2019/222/067/LC08_L2SP_222067_20190315_20200829_02_T1/LC08_L2SP_222067_20190315_20200829_02_T1_ST_B10.TIF s3://usgs-landsat/collection02/level-2/standard/oli-tirs/2019/222/066/LC08_L2SP_222066_20190315_20200829_02_T1/LC08_L2SP_222066_20190315_20200829_02_T1_ST_B10.TIF -t 22LHQ -o ../../test_d_l8/test_debug --sr"
+python ewoc_l8 --verbose v l8_id -pid "LC08_L1TP_201035_20191022_20200825_02_T1 LC08_L1TP_201034_20191022_20200825_02_T1" -t 30STG -o ../out --sr"
 ```

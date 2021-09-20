@@ -24,13 +24,12 @@ def process_group_band(band_num,tr_group,t_srs,s2_tile,bnds,res,out_dir,debug):
     :return: Nothing
     """
     # Create list of same bands but different dates
-    l8_to_s2={'B2':'B02','B3':'B03','B4':'B04','B5':'B08','B6':'B11','B7':'B12','B10':'B10','QA':'QA'}
-    if band_num == "QA_AEROSOL":
+    l8_to_s2={'B2':'B02','B3':'B03','B4':'B04','B5':'B08','B6':'B11','B7':'B12','B10':'B10','QA':'QA','QA_AEROSOL':'MASK'}
+    if band_num in ["QA_AEROSOL", "QA"]:
         sr_method = "near"
-        band_num_alias = "MASK"
     else:
         sr_method = "bilinear"
-        band_num_alias = l8_to_s2[band_num]
+    band_num_alias = l8_to_s2[band_num]
     bucket = "usgs-landsat"
     prefix = os.getenv("DEST_PREFIX")
     group_bands = []
@@ -92,7 +91,7 @@ def process_group(tr_group,t_srs,s2_tile, bnds,out_dir,sr,debug):
     :param debug: If True all the intermediate files and results will be kept locally
     :return: Nothing
     """
-    res_dict={'B2':'10','B3':'10','B4':'10','B5':'10','B6':'20','B7':'20','B10':None,'QA':None,'QA_AEROSOL':'20'}
+    res_dict={'B2':'10','B3':'10','B4':'10','B5':'10','B6':'20','B7':'20','B10':'30','QA':'30','QA_AEROSOL':'20'}
     if sr:
         process_bands = ['QA_AEROSOL', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B10', 'QA']
     else:
@@ -159,8 +158,7 @@ if __name__ == "__main__":
     bnds = get_bounds(s2_tile)
     out_dir = "."
     tr_group = [
-        "s3://usgs-landsat/collection02/level-2/standard/oli-tirs/2019/200/035/LC08_L2SP_200035_20190321_20200829_02_T1/LC08_L2SP_200035_20190321_20200829_02_T1_ST_B10.TIF",
-        "s3://usgs-landsat/collection02/level-2/standard/oli-tirs/2019/200/034/LC08_L2SP_200034_20190321_20200829_02_T1/LC08_L2SP_200034_20190321_20200829_02_T1_ST_B10.TIF"]
+        "LC08_L1TP_201035_20191022_20200825_02_T1", "LC08_L1TP_201034_20191022_20200825_02_T1"]
     # process_group_band("B2",tr_group, t_srs, s2_tile, bnds, out_dir)
     # Run a full (SR + TIR) test with debug mode
     process_group(tr_group, t_srs, s2_tile, bnds, out_dir, sr=True,debug=True)
