@@ -37,8 +37,8 @@ def ard_from_key(key,s2_tile,band_num,out_dir=None):
     tile_id = s2_tile
     unique_id = f"{product_id.split('_')[2]}{product_id.split('_')[5]}{product_id.split('_')[6]}"
     folder_st = os.path.join(measure_type, tile_id[:2], tile_id[2], tile_id[3:], year,date.split('T')[0])
-    dir_name = f"{platform}_{processing_level_folder}_{date}_{unique_id}_{tile_id}"
-    out_name = f"{platform}_{processing_level}_{date}_{unique_id}_{tile_id}"
+    dir_name = f"{platform}_{processing_level_folder}_{date}T235959_{unique_id}_{tile_id}"
+    out_name = f"{platform}_{processing_level}_{date}T235959_{unique_id}_{tile_id}"
     raster_fn = os.path.join(folder_st, dir_name, out_name)
     if out_dir is not None:
         tmp = os.path.join(out_dir, folder_st, dir_name)
