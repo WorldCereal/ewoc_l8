@@ -13,7 +13,7 @@ def process_group_band(band_num,tr_group,t_srs,s2_tile,bnds,res,out_dir,debug):
     """
     Process Landsat-8 band: Download, merge and clip to S2 tile footprint
     For one band, one date
-    :param band_num: Landsat-8 band name, accepted values: ['B2','B3','B4','B5','B6','B7','B10','QA']
+    :param band_num: Landsat-8 band name, accepted values: ['B2','B3','B4','B5','B6','B7','B10','QA','QA_AEROSOL']
     :param tr_group: A list of s3 ids for Landsat-8 raster on the usgs-landsat bucket
     :param t_srs: Target projection system, to determined from the Sentinel-2 tile projection
     :param s2_tile: The id of the targeted Sentinel-2 ex 31TCJ (Toulouse)
@@ -69,12 +69,16 @@ def process_group_band(band_num,tr_group,t_srs,s2_tile,bnds,res,out_dir,debug):
             binary_sr_qa(os.path.join(tmp_folder, 'hrmn_L8_band.tif'))
             upload_file(s3c, os.path.join(tmp_folder, 'hrmn_L8_band.tif'), "world-cereal",
                         os.path.join(prefix, upload_name))
+            up_file_size = os.path.getsize(os.path.join(tmp_folder, 'hrmn_L8_band.tif'))
         else:
             raster_to_ard(os.path.join(tmp_folder, 'hrmn_L8_band.tif'),band_num,os.path.join(tmp_folder, 'hrmn_L8_band_block.tif'))
             upload_file(s3c, os.path.join(tmp_folder, 'hrmn_L8_band_block.tif'), "world-cereal", os.path.join(prefix, upload_name))
+            up_file_size = os.path.getsize(os.path.join(tmp_folder, 'hrmn_L8_band_block.tif'))
+        return 1, up_file_size
     except:
         logging.info('Failed for group\n')
         logging.info(tr_group)
+        return 0,0
     finally:
         if not debug:
             shutil.rmtree(src_folder)
@@ -96,11 +100,14 @@ def process_group(tr_group,t_srs,s2_tile, bnds,out_dir,sr,debug):
         process_bands = ['QA_AEROSOL', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B10', 'QA']
     else:
         process_bands = ['B10', 'QA']
-
+    upload_count = 0
+    total_size = 0
     for band in process_bands:
         logging.info(f'Processing {band}')
-        process_group_band(band,tr_group,t_srs,s2_tile,bnds,res = res_dict[band], out_dir=out_dir,debug=debug)
-
+        up_count, up_size = process_group_band(band,tr_group,t_srs,s2_tile,bnds,res = res_dict[band], out_dir=out_dir,debug=debug)
+        upload_count+=up_count
+        total_size+=up_size
+    logger.info(f'Uploaded {upload_count} tif files for a total size of {total_size}')
 
 def get_band_key(band,tr):
     """
