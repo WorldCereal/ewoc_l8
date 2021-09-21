@@ -8,7 +8,8 @@ ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
 
 # Install system dependencies
-RUN apt-get update -y && apt-get install -y python3-pip git gdal-bin \
+RUN apt-get update -y \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --fix-missing --no-install-recommends python3-pip git gdal-bin \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 RUN pip3 install --no-cache-dir -U pip
