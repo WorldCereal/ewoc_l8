@@ -64,21 +64,22 @@ def process_group_band(band_num,tr_group,t_srs,s2_tile,bnds,res,out_dir,debug):
         cmd_clip = f"gdalwarp -te {bnds[0]} {bnds[1]} {bnds[2]} {bnds[3]} {tmp_folder}/hrmn_L8_band.vrt {tmp_folder}/hrmn_L8_band.tif "
         os.system(cmd_clip)
         upload_name = ard_from_key(ref_name,band_num=band_num, s2_tile=s2_tile) + f'_{band_num_alias}.tif'
+        upload_path = os.path.join(prefix, upload_name)
         logging.info("Converting to EWoC ARD")
         if band_num == "QA_AEROSOL":
             binary_sr_qa(os.path.join(tmp_folder, 'hrmn_L8_band.tif'))
             upload_file(s3c, os.path.join(tmp_folder, 'hrmn_L8_band.tif'), "world-cereal",
-                        os.path.join(prefix, upload_name))
+                        upload_path)
             up_file_size = os.path.getsize(os.path.join(tmp_folder, 'hrmn_L8_band.tif'))
         else:
             raster_to_ard(os.path.join(tmp_folder, 'hrmn_L8_band.tif'),band_num,os.path.join(tmp_folder, 'hrmn_L8_band_block.tif'))
-            upload_file(s3c, os.path.join(tmp_folder, 'hrmn_L8_band_block.tif'), "world-cereal", os.path.join(prefix, upload_name))
+            upload_file(s3c, os.path.join(tmp_folder, 'hrmn_L8_band_block.tif'), "world-cereal", upload_path)
             up_file_size = os.path.getsize(os.path.join(tmp_folder, 'hrmn_L8_band_block.tif'))
-        return 1, up_file_size
+        return 1, up_file_size, upload_path
     except:
         logging.info('Failed for group\n')
         logging.info(tr_group)
-        return 0,0
+        return 0,0, ""
     finally:
         if not debug:
             shutil.rmtree(src_folder)
@@ -102,11 +103,18 @@ def process_group(tr_group,t_srs,s2_tile, bnds,out_dir,sr,debug):
         process_bands = ['B10', 'QA']
     upload_count = 0
     total_size = 0
+    paths = []
     for band in process_bands:
         logging.info(f'Processing {band}')
-        up_count, up_size = process_group_band(band,tr_group,t_srs,s2_tile,bnds,res = res_dict[band], out_dir=out_dir,debug=debug)
+        up_count, up_size, upload_path = process_group_band(band,tr_group,t_srs,s2_tile,bnds,res = res_dict[band],
+                                                            out_dir=out_dir,debug=debug)
         upload_count+=up_count
         total_size+=up_size
+        if upload_path not in paths:
+            paths.append(os.path.dirname(upload_path))
+
+    for path in paths:
+        logger.info(f'successfully pushed to {path}/ on the bucket')
     logger.info(f'Uploaded {upload_count} tif files for a total size of {total_size}')
 
 def get_band_key(band,tr):
