@@ -113,9 +113,17 @@ def process_group(tr_group,t_srs,s2_tile, bnds,out_dir,sr,debug):
         if os.path.dirname(upload_path) not in paths:
             paths.append(os.path.dirname(upload_path))
 
+    optic_path = None
     for path in paths:
-        logger.info(f'successfully pushed to {path}/ on the bucket')
-    logger.info(f'Uploaded {upload_count} tif files for a total size of {total_size}')
+        if "TIR" in path:
+            tir_path = path
+        if "OPTIC" in path:
+            optic_path = path
+    logging_string = f'Uploaded {upload_count} tif files | {tir_path}'
+    if optic_path is not None:
+        logging_string += f' ; {optic_path}'
+    logger.info(logging_string)
+
 
 def get_band_key(band,tr):
     """
