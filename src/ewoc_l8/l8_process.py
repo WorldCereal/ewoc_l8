@@ -110,7 +110,7 @@ def process_group(tr_group,t_srs,s2_tile, bnds,out_dir,sr,debug):
                                                             out_dir=out_dir,debug=debug)
         upload_count+=up_count
         total_size+=up_size
-        if upload_path not in paths:
+        if os.path.dirname(upload_path) not in paths:
             paths.append(os.path.dirname(upload_path))
 
     for path in paths:
