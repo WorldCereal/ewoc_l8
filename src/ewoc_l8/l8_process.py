@@ -121,9 +121,9 @@ def process_group(tr_group,t_srs,s2_tile, bnds,out_dir,sr,debug):
         if "OPTIC" in path:
             optic_path = path
     prefix = os.getenv("DEST_PREFIX")
-    logging_string = f'Uploaded {upload_count} tif files | s3://{bucket_name}/{tir_path}'
+    logging_string = f'Uploaded {upload_count} tif files to bucket | s3://{bucket_name}/{tir_path}'
     if optic_path is not None:
-        logging_string += f' ; s3://{bucket_name}{optic_path}'
+        logging_string += f' ; s3://{bucket_name}/{optic_path}'
     logger.info(logging_string)
 
 
