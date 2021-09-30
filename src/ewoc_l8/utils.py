@@ -102,6 +102,7 @@ def get_mask(sr_qa_pix):
     src = rasterio.open(sr_qa_pix, "r")
     meta = src.meta.copy()
     meta['dtype']="uint8"
+    del meta['nodata']
     data = src.read(1)
     cloud = 1<<3
     #full_mask = np.zeros_like(data)

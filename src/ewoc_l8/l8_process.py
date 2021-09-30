@@ -25,6 +25,10 @@ def process_group_band(band_num,tr_group,t_srs,s2_tile,bnds,res,out_dir,debug):
     """
     # Create list of same bands but different dates
     l8_to_s2={'B2':'B02','B3':'B03','B4':'B04','B5':'B08','B6':'B11','B7':'B12','B10':'B10','QA':'QA','QA_PIXEL':'MASK'}
+    if band_num == "QA_PIXEL":
+        dst_nodata = "-dstnodata 1"
+    else:
+        dst_nodata=""
     if band_num in ["QA_PIXEL", "QA"]:
         sr_method = "near"
     else:
@@ -52,9 +56,9 @@ def process_group_band(band_num,tr_group,t_srs,s2_tile,bnds,res,out_dir,debug):
         for raster in os.listdir(tmp_folder):
             raster = os.path.join(tmp_folder, raster)
             if res is not None:
-                cmd_proj = f"gdalwarp -tr {res} {res} -r {sr_method} -t_srs {t_srs} {raster} {raster[:-4]}_r.tif"
+                cmd_proj = f"gdalwarp -tr {res} {res} -r {sr_method} -t_srs {t_srs} {raster} {raster[:-4]}_r.tif {dst_nodata}"
             else:
-                cmd_proj = f"gdalwarp -t_srs {t_srs} {raster} {raster[:-4]}_r.tif"
+                cmd_proj = f"gdalwarp -t_srs {t_srs} {raster} {raster[:-4]}_r.tif {dst_nodata}"
             os.system(cmd_proj)
         raster_list = " ".join([os.path.join(tmp_folder, rst) for rst in os.listdir(tmp_folder) if rst.endswith('_r.tif')])
         logging.info("Starting VRT creation")
