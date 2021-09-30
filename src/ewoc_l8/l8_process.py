@@ -66,20 +66,21 @@ def process_group_band(band_num,tr_group,t_srs,s2_tile,bnds,res,out_dir,debug):
         upload_name = ard_from_key(ref_name,band_num=band_num, s2_tile=s2_tile) + f'_{band_num_alias}.tif'
         upload_path = os.path.join(prefix, upload_name)
         logging.info("Converting to EWoC ARD")
+        bucket_name = "world-cereal"
         if band_num == "QA_AEROSOL":
             binary_sr_qa(os.path.join(tmp_folder, 'hrmn_L8_band.tif'))
-            upload_file(s3c, os.path.join(tmp_folder, 'hrmn_L8_band.tif'), "world-cereal",
+            upload_file(s3c, os.path.join(tmp_folder, 'hrmn_L8_band.tif'), bucket_name,
                         upload_path)
             up_file_size = os.path.getsize(os.path.join(tmp_folder, 'hrmn_L8_band.tif'))
         else:
             raster_to_ard(os.path.join(tmp_folder, 'hrmn_L8_band.tif'),band_num,os.path.join(tmp_folder, 'hrmn_L8_band_block.tif'))
-            upload_file(s3c, os.path.join(tmp_folder, 'hrmn_L8_band_block.tif'), "world-cereal", upload_path)
+            upload_file(s3c, os.path.join(tmp_folder, 'hrmn_L8_band_block.tif'), bucket_name, upload_path)
             up_file_size = os.path.getsize(os.path.join(tmp_folder, 'hrmn_L8_band_block.tif'))
-        return 1, up_file_size, upload_path
+        return 1, up_file_size, upload_path, bucket_name
     except:
         logging.info('Failed for group\n')
         logging.info(tr_group)
-        return 0,0, ""
+        return 0,0, "", ""
     finally:
         if not debug:
             shutil.rmtree(src_folder)
@@ -106,7 +107,7 @@ def process_group(tr_group,t_srs,s2_tile, bnds,out_dir,sr,debug):
     paths = []
     for band in process_bands:
         logging.info(f'Processing {band}')
-        up_count, up_size, upload_path = process_group_band(band,tr_group,t_srs,s2_tile,bnds,res = res_dict[band],
+        up_count, up_size, upload_path, bucket_name = process_group_band(band,tr_group,t_srs,s2_tile,bnds,res = res_dict[band],
                                                             out_dir=out_dir,debug=debug)
         upload_count+=up_count
         total_size+=up_size
@@ -119,9 +120,10 @@ def process_group(tr_group,t_srs,s2_tile, bnds,out_dir,sr,debug):
             tir_path = path
         if "OPTIC" in path:
             optic_path = path
-    logging_string = f'Uploaded {upload_count} tif files | {tir_path}'
+    prefix = os.getenv("DEST_PREFIX")
+    logging_string = f'Uploaded {upload_count} tif files | s3://{bucket_name}/{tir_path}'
     if optic_path is not None:
-        logging_string += f' ; {optic_path}'
+        logging_string += f' ; s3://{bucket_name}{optic_path}'
     logger.info(logging_string)
 
 
