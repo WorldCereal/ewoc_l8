@@ -19,7 +19,7 @@ def make_dir(fold_dir):
         os.makedirs(fold_dir)
 
 def ard_from_key(key,s2_tile,band_num,out_dir=None):
-    sr_bands = ['B2','B3','B4','B5','B6','B7','QA_AEROSOL']
+    sr_bands = ['B2','B3','B4','B5','B6','B7','QA_PIXEL']
     st_bands = ['B10','QA']
     if band_num in sr_bands:
         measure_type = "OPTICAL"
@@ -54,7 +54,7 @@ def binary_sr_qa(sr_qa_file):
     msk = np.isin(ds,clear_px).astype(int)
     ds[msk==1]=1
     ds[msk==0]=0
-    raster_fn = sr_qa_file
+    raster_fn = sr_qa_file[:-4]+'_test.tif'
     with rasterio.open(
             raster_fn,
             "w+",
@@ -64,7 +64,7 @@ def binary_sr_qa(sr_qa_file):
             blockxsize=512,
             blockysize=512,
     ) as out:
-        out.write(ds.astype(rasterio.uint8), 1)
+        out.write(ds.astype(rasterio.uint16), 1)
     src.close()
     logging.info("Binary cloud mask - Done")
 
@@ -97,3 +97,26 @@ def key_from_id(pid):
     path, row = info[2][:3],info[2][3:]
     key = f"s3://usgs-landsat/collection02/level-2/standard/oli-tirs/{year}/{path}/{row}/LC08_L2SP_{path}{row}_{date1}_{date2}_02_T1/LC08_L2SP_{path}{row}_{date1}_{date2}_02_T1_ST_B10.TIF"
     return key
+
+def get_mask(sr_qa_pix):
+    src = rasterio.open(sr_qa_pix, "r")
+    meta = src.meta.copy()
+    meta['dtype']="uint8"
+    data = src.read(1)
+    cloud = 1<<3
+    #full_mask = np.zeros_like(data)
+    cld_mask = np.bitwise_and(data,cloud)
+    cld_mask = cld_mask > 0
+    raster_fn = sr_qa_pix
+    with rasterio.open(
+            raster_fn,
+            "w+",
+            **meta,
+            compress="deflate",
+            tiled=True,
+            blockxsize=512,
+            blockysize=512,
+    ) as out:
+        out.write(cld_mask.astype(rasterio.uint8), 1)
+    src.close()
+    logging.info("Binary cloud mask - Done")

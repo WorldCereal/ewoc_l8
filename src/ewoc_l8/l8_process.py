@@ -3,7 +3,7 @@ import os
 import shutil
 
 import rasterio
-from ewoc_l8.utils import ard_from_key,make_dir, binary_sr_qa, key_from_id
+from ewoc_l8.utils import ard_from_key,make_dir, get_mask, key_from_id
 from dataship.dag.utils import download_s3file
 from dataship.dag.s3man import upload_file, get_s3_client
 
@@ -13,7 +13,7 @@ def process_group_band(band_num,tr_group,t_srs,s2_tile,bnds,res,out_dir,debug):
     """
     Process Landsat-8 band: Download, merge and clip to S2 tile footprint
     For one band, one date
-    :param band_num: Landsat-8 band name, accepted values: ['B2','B3','B4','B5','B6','B7','B10','QA','QA_AEROSOL']
+    :param band_num: Landsat-8 band name, accepted values: ['B2','B3','B4','B5','B6','B7','B10','QA','QA_PIXEL']
     :param tr_group: A list of s3 ids for Landsat-8 raster on the usgs-landsat bucket
     :param t_srs: Target projection system, to determined from the Sentinel-2 tile projection
     :param s2_tile: The id of the targeted Sentinel-2 ex 31TCJ (Toulouse)
@@ -24,8 +24,8 @@ def process_group_band(band_num,tr_group,t_srs,s2_tile,bnds,res,out_dir,debug):
     :return: Nothing
     """
     # Create list of same bands but different dates
-    l8_to_s2={'B2':'B02','B3':'B03','B4':'B04','B5':'B08','B6':'B11','B7':'B12','B10':'B10','QA':'QA','QA_AEROSOL':'MASK'}
-    if band_num in ["QA_AEROSOL", "QA"]:
+    l8_to_s2={'B2':'B02','B3':'B03','B4':'B04','B5':'B08','B6':'B11','B7':'B12','B10':'B10','QA':'QA','QA_PIXEL':'MASK'}
+    if band_num in ["QA_PIXEL", "QA"]:
         sr_method = "near"
     else:
         sr_method = "bilinear"
@@ -66,11 +66,10 @@ def process_group_band(band_num,tr_group,t_srs,s2_tile,bnds,res,out_dir,debug):
         upload_name = ard_from_key(ref_name,band_num=band_num, s2_tile=s2_tile) + f'_{band_num_alias}.tif'
         upload_path = os.path.join(prefix, upload_name)
         logging.info("Converting to EWoC ARD")
-        bucket_name = "world-cereal"
-        if band_num == "QA_AEROSOL":
-            binary_sr_qa(os.path.join(tmp_folder, 'hrmn_L8_band.tif'))
-            upload_file(s3c, os.path.join(tmp_folder, 'hrmn_L8_band.tif'), bucket_name,
-                        upload_path)
+        if band_num == "QA_PIXEL":
+            get_mask(os.path.join(tmp_folder, 'hrmn_L8_band.tif'))
+            upload_file(s3c, os.path.join(tmp_folder, 'hrmn_L8_band.tif'), "world-cereal",
+                        os.path.join(prefix, upload_name))
             up_file_size = os.path.getsize(os.path.join(tmp_folder, 'hrmn_L8_band.tif'))
         else:
             raster_to_ard(os.path.join(tmp_folder, 'hrmn_L8_band.tif'),band_num,os.path.join(tmp_folder, 'hrmn_L8_band_block.tif'))
@@ -97,9 +96,9 @@ def process_group(tr_group,t_srs,s2_tile, bnds,out_dir,sr,debug):
     :param debug: If True all the intermediate files and results will be kept locally
     :return: Nothing
     """
-    res_dict={'B2':'10','B3':'10','B4':'10','B5':'10','B6':'20','B7':'20','B10':'30','QA':'30','QA_AEROSOL':'20'}
+    res_dict={'B2':'10','B3':'10','B4':'10','B5':'10','B6':'20','B7':'20','B10':'30','QA':'30','QA_PIXEL':'20'}
     if sr:
-        process_bands = ['QA_AEROSOL', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B10', 'QA']
+        process_bands = ['QA_PIXEL', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B10', 'QA']
     else:
         process_bands = ['B10', 'QA']
     upload_count = 0
@@ -134,7 +133,8 @@ def get_band_key(band,tr):
     :param tr: Thermal band s3 id
     :return: date of the product and the s3 key
     """
-    sr_bands = ['B2','B3','B4','B5','B6','B7','QA_AEROSOL']
+    sr_bands = ['B2','B3','B4','B5','B6','B7']
+    qa_bands=['QA_PIXEL']
     st_bands = ['B10','QA']
     base = tr[:-11]
     date = os.path.split(tr)[-1].split('_')[3]
@@ -143,6 +143,8 @@ def get_band_key(band,tr):
         key = f"{base}_ST_{band.upper()}.TIF"
     elif band in sr_bands:
         key = f"{base}_SR_{band.upper()}.TIF"
+    elif band in qa_bands:
+        key = f"{base}_{band.upper()}.TIF"
     else:
         logging.info("Band not found")
     return date, key
