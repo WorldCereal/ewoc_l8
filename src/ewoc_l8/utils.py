@@ -19,8 +19,8 @@ def make_dir(fold_dir):
         os.makedirs(fold_dir)
 
 def ard_from_key(key,s2_tile,band_num,out_dir=None):
-    sr_bands = ['B2','B3','B4','B5','B6','B7','QA_PIXEL']
-    st_bands = ['B10','QA']
+    sr_bands = ['B2','B3','B4','B5','B6','B7','QA_PIXEL_SR']
+    st_bands = ['B10','QA_PIXEL_TIR']
     if band_num in sr_bands:
         measure_type = "OPTICAL"
     elif band_num in st_bands:
