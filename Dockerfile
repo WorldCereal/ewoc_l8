@@ -14,7 +14,7 @@ RUN apt-get update -y \
     && rm -rf /var/lib/apt/lists/*
 RUN pip3 install --no-cache-dir -U pip
 
-ARG DATASHIP_VERSION=0.1.9
+ARG DATASHIP_VERSION=0.1.10
 LABEL DATASHIP="${DATASHIP_VERSION}"
 COPY dataship-${DATASHIP_VERSION}.tar.gz /opt
 RUN pip3 install --no-cache-dir /opt/dataship-${DATASHIP_VERSION}.tar.gz
