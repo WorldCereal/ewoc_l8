@@ -4,8 +4,8 @@ import shutil
 
 import rasterio
 from ewoc_l8.utils import ard_from_key,make_dir, get_mask, key_from_id
-from dataship.dag.utils import download_s3file
-from dataship.dag.s3man import upload_file, get_s3_client
+from ewoc_dag.dag.utils import download_s3file
+from ewoc_dag.dag.s3man import upload_file, get_s3_client
 
 logger = logging.getLogger(__name__)
 
@@ -187,7 +187,7 @@ def raster_to_ard(raster_path, band_num, raster_fn):
 
 if __name__ == "__main__":
 
-    from dataship.dag.utils import get_bounds
+    from ewoc_dag.dag.utils import get_bounds
     s2_tile = "30SVG"
     t_srs = "EPSG:32730"
     bnds = get_bounds(s2_tile)

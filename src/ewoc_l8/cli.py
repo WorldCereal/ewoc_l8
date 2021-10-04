@@ -2,7 +2,7 @@ import logging
 import sys
 
 import click
-from dataship.dag.utils import get_bounds
+from ewoc_dag.dag.utils import get_bounds
 
 from ewoc_l8.l8_process import process_group
 from ewoc_l8.utils import get_tile_proj, json_to_dict

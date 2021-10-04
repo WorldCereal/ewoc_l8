@@ -8,7 +8,7 @@ This processor will:
 * Convert the downloaded products into EWoC ARD format
 * Upload the processed files to a separate bucket in order to be used in the classification 
 # Installation
-1. First grab the latest versions of dataship (ewoc_dag) and eotile from the github
+1. First grab the latest versions of ewoc_dag and eotile from the github
 2. `pip install .`
 
 You can also pull the latest docker image from the harbour or ecr registry
