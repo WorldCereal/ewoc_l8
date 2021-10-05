@@ -3,7 +3,7 @@ import os
 import shutil
 
 import rasterio
-from ewoc_l8.utils import ard_from_key,make_dir, get_mask, key_from_id
+from ewoc_l8.utils import ard_from_key,make_dir, get_mask, key_from_id, raster_to_ard
 from dataship.dag.utils import download_s3file
 from dataship.dag.s3man import upload_file, get_s3_client
 
@@ -27,6 +27,12 @@ def process_group_band(band_num,tr_group,t_srs,s2_tile,bnds,res,out_dir,debug):
     # Create list of same bands but different dates
     l8_to_s2={'B2':'B02','B3':'B03','B4':'B04','B5':'B08','B6':'B11','B7':'B12','B10':'B10','QA_PIXEL_SR':'MASK',
               'QA_PIXEL_TIR':'QA_PIXEL'}
+
+    s2_scaling_factor = 10000
+    factors = {'a': 0.0000275 * s2_scaling_factor,
+               'b': -0.2 * s2_scaling_factor,
+               }  # Scaling factors
+
     if band_num in ["QA_PIXEL_TIR", "QA_PIXEL_SR"]:
         sr_method = "near"
         dst_nodata = "-dstnodata 1"
@@ -81,7 +87,11 @@ def process_group_band(band_num,tr_group,t_srs,s2_tile,bnds,res,out_dir,debug):
                         os.path.join(prefix, upload_name))
             up_file_size = os.path.getsize(os.path.join(tmp_folder, 'hrmn_L8_band_block.tif'))
         else:
-            raster_to_ard(os.path.join(tmp_folder, 'hrmn_L8_band.tif'),band_num,os.path.join(tmp_folder, 'hrmn_L8_band_block.tif'))
+            raster_to_ard(os.path.join(tmp_folder, 'hrmn_L8_band.tif'),
+                          band_num,
+                          os.path.join(tmp_folder, 'hrmn_L8_band_block.tif'),
+                          factors
+                          )
             upload_file(s3c, os.path.join(tmp_folder, 'hrmn_L8_band_block.tif'), bucket_name, upload_path)
             up_file_size = os.path.getsize(os.path.join(tmp_folder, 'hrmn_L8_band_block.tif'))
         return 1, up_file_size, upload_path, bucket_name
@@ -159,34 +169,6 @@ def get_band_key(band,tr):
         logging.info("Band not found")
     return date, key
 
-def raster_to_ard(raster_path, band_num, raster_fn):
-    """
-    Read raster and update internals to fit ewoc ard specs
-    :param raster_path: Path to raster file
-    :param band_num: Band number, B02 for example
-    :param raster_fn: Output raster path
-    """
-    with rasterio.Env(GDAL_CACHEMAX=2048):
-        with rasterio.open(raster_path,'r') as src:
-            raster_array = src.read()
-            meta = src.meta.copy()
-    meta["driver"] = "GTiff"
-    if band_num != "QA_PIXEL_TIR":
-        meta["nodata"] = 0
-    bands_10m = ['B2','B3','B4','B5']
-    blocksize = 512
-    if band_num in bands_10m:
-        blocksize = 1024
-    with rasterio.open(
-        raster_fn,
-        "w+",
-        **meta,
-        tiled=True,
-        compress="deflate",
-        blockxsize=blocksize,
-        blockysize=blocksize,
-    ) as out:
-        out.write(raster_array)
 
 if __name__ == "__main__":
 

@@ -121,3 +121,58 @@ def get_mask(sr_qa_pix):
         out.write(cld_mask.astype(rasterio.uint8), 1)
     src.close()
     logging.info("Binary cloud mask - Done")
+
+
+def rescale_array(array, factors):
+    """
+    Rescales an array and forces it to np.uint16 :
+    Applies array * factors['a'] + factors['b']
+    :param array: The input array
+    :param factors: A dictionary containing the integer factors
+    :return:
+    """
+    if factors is None:
+        logger.error("factors are undefined")
+        raise ValueError
+    logger.info("Rescaling Raster values")
+    array = array * factors['a'] + factors['b']
+    if True:  # Handling negative SR, solution 1
+        array[array == -0.2 * 10000] = 0
+        array[array < 0] = 1
+    else:  # Solution 2
+        array[array < 0] = 0
+    return array.astype(np.uint16)
+
+
+def raster_to_ard(raster_path, band_num, raster_fn, factors=None):
+    """
+    Read raster and update internals to fit ewoc ard specs
+    :param raster_path: Path to raster file
+    :param band_num: Band number, B02 for example
+    :param raster_fn: Output raster path
+    :param factors: dictionary of factors for a rescale of the raster values
+    """
+    bands_sr = ['B2','B3','B4','B5','B6','B7']
+    with rasterio.Env(GDAL_CACHEMAX=2048):
+        with rasterio.open(raster_path,'r') as src:
+            raster_array = src.read()
+            if band_num in bands_sr:
+                raster_array = rescale_array(raster_array, factors)
+            meta = src.meta.copy()
+    meta["driver"] = "GTiff"
+    if band_num != "QA_PIXEL_TIR":
+        meta["nodata"] = 0
+    bands_10m = ['B2','B3','B4','B5']
+    blocksize = 512
+    if band_num in bands_10m:
+        blocksize = 1024
+    with rasterio.open(
+        raster_fn,
+        "w+",
+        **meta,
+        tiled=True,
+        compress="deflate",
+        blockxsize=blocksize,
+        blockysize=blocksize,
+    ) as out:
+        out.write(raster_array)
