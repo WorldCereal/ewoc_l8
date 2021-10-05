@@ -75,9 +75,11 @@ def process_group_band(band_num,tr_group,t_srs,s2_tile,bnds,res,out_dir,debug):
         if "QA_PIXEL" in band_num:
             if "SR" in band_num:
                 get_mask(os.path.join(tmp_folder, 'hrmn_L8_band.tif'))
-            upload_file(s3c, os.path.join(tmp_folder, 'hrmn_L8_band.tif'), bucket_name,
+            raster_to_ard(os.path.join(tmp_folder, 'hrmn_L8_band.tif'), band_num,
+                          os.path.join(tmp_folder, 'hrmn_L8_band_block.tif'))
+            upload_file(s3c, os.path.join(tmp_folder, 'hrmn_L8_band_block.tif'), bucket_name,
                         os.path.join(prefix, upload_name))
-            up_file_size = os.path.getsize(os.path.join(tmp_folder, 'hrmn_L8_band.tif'))
+            up_file_size = os.path.getsize(os.path.join(tmp_folder, 'hrmn_L8_band_block.tif'))
         else:
             raster_to_ard(os.path.join(tmp_folder, 'hrmn_L8_band.tif'),band_num,os.path.join(tmp_folder, 'hrmn_L8_band_block.tif'))
             upload_file(s3c, os.path.join(tmp_folder, 'hrmn_L8_band_block.tif'), bucket_name, upload_path)
@@ -169,7 +171,8 @@ def raster_to_ard(raster_path, band_num, raster_fn):
             raster_array = src.read()
             meta = src.meta.copy()
     meta["driver"] = "GTiff"
-    meta["nodata"] = 0
+    if band_num != "QA_PIXEL_TIR":
+        meta["nodata"] = 0
     bands_10m = ['B2','B3','B4','B5']
     blocksize = 512
     if band_num in bands_10m:
