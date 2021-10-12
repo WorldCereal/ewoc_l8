@@ -5,6 +5,7 @@ import os
 import boto3
 import numpy as np
 import rasterio
+
 from eotile.eotile_module import main
 
 logger = logging.getLogger(__name__)
@@ -87,6 +88,7 @@ def download_s3file(s3_full_key,out_file, bucket):
 def get_tile_proj(s2tile):
     res = main(s2tile)[0]
     srs = res['SRS'].values
+    logger.info('S2 tile %s has following srs %s', s2tile, srs[0])
     return srs[0]
 
 def key_from_id(pid):
