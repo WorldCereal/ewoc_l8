@@ -147,6 +147,7 @@ def rescale_array(array, factors):
     array[array < 0] = 0
     return array.astype(np.uint16)
 
+
 def qa_pixel_to_binary(qa_pixel_array):
     """
     Binarizes the fmask qa_pixel_array
