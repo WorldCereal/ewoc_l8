@@ -136,11 +136,7 @@ def rescale_array(array, factors):
         raise ValueError
     logger.info("Rescaling Raster values")
     array = array * factors['a'] + factors['b']
-    if True:  # Handling negative SR, solution 1
-        array[array == -0.2 * 10000] = 0
-        array[array < 0] = 1
-    else:  # Solution 2
-        array[array < 0] = 0
+    array[array < 0] = 0
     return array.astype(np.uint16)
 
 
