@@ -49,12 +49,16 @@ def cli(verbose):
     default=False,
     help="If True all the intermediate files and results will be kept locally",
 )
-def run_l8_plan(plan_json, out_dir, sr, debug):
+@click.option('--only_sr_mask', is_flag=True, help="Compute only SR masks")
+@click.option('--no_tir', is_flag=True, help="Do not compute TIR products")
+def run_l8_plan(plan_json, out_dir, sr, only_sr_mask, no_tir, debug):
     """
     Run the Landsat-8 processer over a json plan
     :param plan_json: EWoC Plan in json format
     :param out_dir: Output directory
-    :param only_tir: Get only thermal bands, default to True
+    :param sr: thermal bands and surface reflectance
+    :param only_sr_mask: Compute only SR masks
+    :param no_tir: Do not compute TIR products
     """
     plan = json_to_dict(plan_json)
     for s2_tile in plan:
@@ -68,7 +72,9 @@ def run_l8_plan(plan_json, out_dir, sr, debug):
                 bnds=bnds,
                 out_dir=out_dir,
                 sr=sr,
-                debug=debug,
+                only_sr_mask=only_sr_mask,
+                no_tir=no_tir,
+                debug = debug,
             )
 
 
@@ -85,19 +91,25 @@ def run_l8_plan(plan_json, out_dir, sr, debug):
     default=False,
     help="If True all the intermediate files and results will be kept locally",
 )
-def run_id(pid_group, s2_tile, out_dir, sr, debug):
+@click.option('--only_sr_mask', is_flag=True, help="Compute only SR masks")
+@click.option('--no_tir', is_flag=True, help="Do not compute TIR products")
+def run_id(pid_group, s2_tile, out_dir, sr, only_sr_mask, no_tir, debug):
     """
     Run Landsat-8 processor for one day
     :param pid_group: Landsat-8 group of ids (same date), separeted by space
     :param s2_tile: Sentinel-2 tile id
     :param out_dir: Output directory
     :param sr: Get SR bands, default to False
+    :param only_sr_mask: Compute only SR masks
+    :param no_tir: Do not compute TIR products
     :param debug: If True all the intermediate files and results will be kept locally
     """
     tr_group = pid_group.split(" ")
     t_srs, bnds = get_tile_info(s2_tile)
     process_group(
-        tr_group, t_srs, s2_tile=s2_tile, bnds=bnds, out_dir=out_dir, sr=sr, debug=debug
+        tr_group, t_srs, s2_tile=s2_tile, bnds=bnds, out_dir=out_dir, sr=sr, only_sr_mask=only_sr_mask,
+        no_tir=no_tir,
+        debug=debug
     )
 
 if __name__ == "__main__":
