@@ -58,7 +58,7 @@ def run_l8_plan(plan_json, out_dir, sr, only_sr_mask, no_tir, debug):
     :param out_dir: Output directory
     :param sr: thermal bands and surface reflectance
     :param only_sr_mask: Compute only SR masks
-    :param no_tir: Do not compute TIR products"
+    :param no_tir: Do not compute TIR products
     """
     plan = json_to_dict(plan_json)
     for s2_tile in plan:
@@ -101,7 +101,7 @@ def run_id(pid_group, s2_tile, out_dir, sr, only_sr_mask, no_tir, debug):
     :param out_dir: Output directory
     :param sr: Get SR bands, default to False
     :param only_sr_mask: Compute only SR masks
-    :param no_tir: Do not compute TIR products"
+    :param no_tir: Do not compute TIR products
     :param debug: If True all the intermediate files and results will be kept locally
     """
     tr_group = pid_group.split(" ")
