@@ -5,6 +5,7 @@ import os
 import boto3
 import numpy as np
 import rasterio
+
 from eotile.eotile_module import main
 
 logger = logging.getLogger(__name__)
@@ -84,10 +85,17 @@ def download_s3file(s3_full_key,out_file, bucket):
         for chunk in iter(lambda: resp["Body"].read(4096), b""):
             f.write(chunk)
 
-def get_tile_proj(s2tile):
-    res = main(s2tile)[0]
-    srs = res['SRS'].values
-    return srs[0]
+def get_tile_info(s2_tile_id:str):
+    s2_tile = main(s2_tile_id)[0]
+    s2_tile_srs = (s2_tile['SRS'].values)[0]
+    logger.info('SRS of %s is %s', s2_tile_id, s2_tile_srs)
+
+    s2_tile_UL0 = list(s2_tile["UL0"])[0]
+    s2_tile_UL1 = list(s2_tile["UL1"])[0]
+    s2_tile_bb = (s2_tile_UL0, s2_tile_UL1 - 109800, s2_tile_UL0 + 109800, s2_tile_UL1)
+    logger.info('Bounding box of %s is %s',s2_tile_id, s2_tile_bb)
+
+    return s2_tile_srs, s2_tile_bb
 
 def key_from_id(pid):
     info = pid.split('_')

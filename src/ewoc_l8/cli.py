@@ -2,10 +2,9 @@ import logging
 import sys
 
 import click
-from dataship.dag.utils import get_bounds
 
 from ewoc_l8.l8_process import process_group
-from ewoc_l8.utils import get_tile_proj, json_to_dict
+from ewoc_l8.utils import get_tile_info, json_to_dict
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +21,6 @@ def set_logger(verbose_v):
     logging.basicConfig(
         level=loglevel, stream=sys.stdout, format=logformat, datefmt="%Y-%m-%d %H:%M:%S"
     )
-
 
 @click.group()
 @click.option(
@@ -60,9 +58,8 @@ def run_l8_plan(plan_json, out_dir, sr, debug):
     """
     plan = json_to_dict(plan_json)
     for s2_tile in plan:
-        t_srs = get_tile_proj(s2_tile)
+        t_srs, bnds = get_tile_info(s2_tile)
         l8_tirs = plan[s2_tile]["L8_TIRS"]
-        bnds = get_bounds(s2_tile)
         for tr_group in l8_tirs:
             process_group(
                 tr_group,
@@ -98,8 +95,7 @@ def run_id(pid_group, s2_tile, out_dir, sr, debug):
     :param debug: If True all the intermediate files and results will be kept locally
     """
     tr_group = pid_group.split(" ")
-    t_srs = get_tile_proj(s2_tile)
-    bnds = get_bounds(s2_tile)
+    t_srs, bnds = get_tile_info(s2_tile)
     process_group(
         tr_group, t_srs, s2_tile=s2_tile, bnds=bnds, out_dir=out_dir, sr=sr, debug=debug
     )

@@ -2,10 +2,11 @@ import logging
 import os
 import shutil
 
-import rasterio
-from ewoc_l8.utils import ard_from_key,make_dir, get_mask, key_from_id, raster_to_ard
 from dataship.dag.utils import download_s3file
 from dataship.dag.s3man import upload_file, get_s3_client
+import rasterio
+
+from ewoc_l8.utils import ard_from_key,make_dir, get_mask, key_from_id, raster_to_ard
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +61,7 @@ def process_group_band(band_num,tr_group,t_srs,s2_tile,bnds,res,out_dir,debug):
         raster_fn = os.path.join(tmp_folder,os.path.split(band)[-1][:-11])
         download_s3file(band, raster_fn, bucket)
     try:
-        logging.info("Starting Re-projection")
+        logger.info("Starting Re-projection")
         for raster in os.listdir(tmp_folder):
             raster = os.path.join(tmp_folder, raster)
             if res is not None:
@@ -69,15 +70,15 @@ def process_group_band(band_num,tr_group,t_srs,s2_tile,bnds,res,out_dir,debug):
                 cmd_proj = f"gdalwarp -t_srs {t_srs} {raster} {raster[:-4]}_r.tif {dst_nodata}"
             os.system(cmd_proj)
         raster_list = " ".join([os.path.join(tmp_folder, rst) for rst in os.listdir(tmp_folder) if rst.endswith('_r.tif')])
-        logging.info("Starting VRT creation")
+        logger.info("Starting VRT creation")
         cmd_vrt = f"gdalbuildvrt -q {tmp_folder}/hrmn_L8_band.vrt {raster_list}"
         os.system(cmd_vrt)
-        logging.info("Starting Clip to S2 extent")
+        logger.info("Starting Clip to S2 extent")
         cmd_clip = f"gdalwarp -te {bnds[0]} {bnds[1]} {bnds[2]} {bnds[3]} {tmp_folder}/hrmn_L8_band.vrt {tmp_folder}/hrmn_L8_band.tif "
         os.system(cmd_clip)
         upload_name = ard_from_key(ref_name,band_num=band_num, s2_tile=s2_tile) + f'_{band_num_alias}.tif'
         upload_path = os.path.join(prefix, upload_name)
-        logging.info("Converting to EWoC ARD")
+        logger.info("Converting to EWoC ARD")
         if "QA_PIXEL" in band_num:
             if "SR" in band_num:
                 get_mask(os.path.join(tmp_folder, 'hrmn_L8_band.tif'))
@@ -96,8 +97,8 @@ def process_group_band(band_num,tr_group,t_srs,s2_tile,bnds,res,out_dir,debug):
             up_file_size = os.path.getsize(os.path.join(tmp_folder, 'hrmn_L8_band_block.tif'))
         return 1, up_file_size, upload_path, bucket_name
     except:
-        logging.info('Failed for group\n')
-        logging.info(tr_group)
+        logger.info('Failed for group\n')
+        logger.info(tr_group)
         return 0,0, "", ""
     finally:
         if not debug:
@@ -125,7 +126,7 @@ def process_group(tr_group,t_srs,s2_tile, bnds,out_dir,sr,debug):
     total_size = 0
     paths = []
     for band in process_bands:
-        logging.info(f'Processing {band}')
+        logger.info('Processing %s', band)
         up_count, up_size, upload_path, bucket_name = process_group_band(band,tr_group,t_srs,s2_tile,bnds,
                                                                          res = res_dict[band],
                                                                          out_dir=out_dir,debug=debug)
