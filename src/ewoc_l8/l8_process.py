@@ -143,14 +143,20 @@ def process_group(tr_group, t_srs, s2_tile, bnds, out_dir, sr, only_sr_mask, no_
             paths.append(os.path.dirname(upload_path))
 
     optic_path = None
+    tir_path = None
     for path in paths:
         if "TIR" in path:
             tir_path = path
         if "OPTIC" in path:
             optic_path = path
-    logging_string = f'Uploaded {upload_count} tif files to bucket | s3://{bucket_name}/{tir_path}'
+
+    path_list = []
+    if tir_path is not None:
+        path_list.append(f"s3://{bucket_name}/{tir_path}")
     if optic_path is not None:
-        logging_string += f' ; s3://{bucket_name}/{optic_path}'
+        path_list.append(f's3://{bucket_name}/{optic_path}')
+
+    logging_string = f'Uploaded {upload_count} tif files to bucket |'+ (' ; '.join(path_list))
     print(logging_string)
 
 

@@ -106,16 +106,35 @@ def key_from_id(pid):
     key = f"s3://usgs-landsat/collection02/level-2/standard/oli-tirs/{year}/{path}/{row}/LC08_L2SP_{path}{row}_{date1}_{date2}_02_T1/LC08_L2SP_{path}{row}_{date1}_{date2}_02_T1_ST_B10.TIF"
     return key
 
+
 def get_mask(sr_qa_pix):
     src = rasterio.open(sr_qa_pix, "r")
     meta = src.meta.copy()
-    meta['dtype']="uint8"
-    del meta['nodata']
-    data = src.read(1)
-    cloud = 1<<3
-    #full_mask = np.zeros_like(data)
-    cld_mask = np.bitwise_and(data,cloud)
-    cld_mask = cld_mask > 0
+    meta['dtype'] = "uint8"
+    meta['nodata'] = 255
+    qa_pixel_array = src.read(1)
+
+    # Define the nodata
+    nodata = qa_pixel_array == 1
+
+    # Define the to-be-masked qa_pixel_array values based on the bitmask
+    cirrus = 1 << 2
+    cloud = 1 << 3
+    shadow = 1 << 4
+    snow = 1 << 5
+
+    # Construct the "clear" mask
+    clear = ((qa_pixel_array & shadow == 0) &
+             (qa_pixel_array & cloud == 0) &
+             (qa_pixel_array & cirrus == 0) &
+             (qa_pixel_array & snow == 0))
+
+    # Contruct the final binary 0-1-255 mask
+    cld_mask = np.zeros_like(qa_pixel_array)
+    cld_mask[nodata] = 255
+    cld_mask[clear] = 1
+    cld_mask[nodata] = 255
+
     raster_fn = sr_qa_pix
     with rasterio.open(
             raster_fn,
@@ -148,35 +167,6 @@ def rescale_array(array, factors):
     return array.astype(np.uint16)
 
 
-def qa_pixel_to_binary(qa_pixel_array):
-    """
-    Binarizes the fmask qa_pixel_array
-    :param array: The input array
-    :return: the binarized mask
-    """
-    # Define the nodata
-    nodata = qa_pixel_array == 1
-
-    # Define the to-be-masked qa_pixel_array values based on the bitmask
-    cirrus = 1 << 2
-    cloud = 1 << 3
-    shadow = 1 << 4
-    snow = 1 << 5
-
-    # Construct the "clear" mask
-    clear = ((qa_pixel_array & shadow == 0) &
-             (qa_pixel_array & cloud == 0) &
-             (qa_pixel_array & cirrus == 0) &
-             (qa_pixel_array & snow == 0))
-
-    # Contruct the final binary 0-1-255 mask
-    mask = np.zeros_like(qa_pixel_array)
-    mask[nodata] = 255
-    mask[clear] = 1
-
-    return mask.astype(np.uint8)
-
-
 def raster_to_ard(raster_path, band_num, raster_fn, factors=None):
     """
     Read raster and update internals to fit ewoc ard specs
@@ -189,14 +179,14 @@ def raster_to_ard(raster_path, band_num, raster_fn, factors=None):
     with rasterio.Env(GDAL_CACHEMAX=2048):
         with rasterio.open(raster_path,'r') as src:
             raster_array = src.read()
+            meta = src.meta.copy()
             if band_num in bands_sr:
                 raster_array = rescale_array(raster_array, factors)
-            if band_num == "QA_PIXEL_SR":
-                raster_array = qa_pixel_to_binary(raster_array)
-            meta = src.meta.copy()
     meta["driver"] = "GTiff"
     if band_num != "QA_PIXEL_TIR":
         meta["nodata"] = 0
+    if band_num == "QA_PIXEL_SR":
+        meta["nodata"] = 255
     bands_10m = ['B2','B3','B4','B5']
     blocksize = 512
     if band_num in bands_10m:
