@@ -115,6 +115,8 @@ def process_group(tr_group, t_srs, s2_tile, bnds, out_dir, sr, only_sr_mask, no_
     :param out_dir: Output directory to store the temporary results, should be deleted on full completion
     :param sr: Set to True to get all the following bands B2/B3/B4/B5/B6/B7/B10/QA, False by default
     :param debug: If True all the intermediate files and results will be kept locally
+    :param only_sr_mask: Compute only SR masks
+    :param no_tir: Do not compute TIR products"
     :return: Nothing
     """
     res_dict={'B2':'10','B3':'10','B4':'10','B5':'10','B6':'20','B7':'20','B10':'30','QA_PIXEL_SR':'20',
