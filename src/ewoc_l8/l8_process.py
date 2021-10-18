@@ -104,7 +104,8 @@ def process_group_band(band_num,tr_group,t_srs,s2_tile,bnds,res,out_dir,debug):
         if not debug:
             shutil.rmtree(src_folder)
 
-def process_group(tr_group,t_srs,s2_tile, bnds,out_dir,sr,debug):
+
+def process_group(tr_group, t_srs, s2_tile, bnds, out_dir, sr, only_sr_mask, no_tir, debug):
     """
     Process a group of Landsat-8 ids, full bands or thermal only
     :param tr_group: A list of s3 ids for Landsat-8 raster on the usgs-landsat bucket
@@ -120,6 +121,10 @@ def process_group(tr_group,t_srs,s2_tile, bnds,out_dir,sr,debug):
               'QA_PIXEL_TIR':'30'}
     if sr:
         process_bands = ['QA_PIXEL_TIR', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B10', 'QA_PIXEL_SR']
+    elif only_sr_mask:
+        process_bands = ['QA_PIXEL_SR']
+    elif no_tir:
+        process_bands = ['B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'QA_PIXEL_SR']
     else:
         process_bands = ['B10', 'QA_PIXEL_TIR']
     upload_count = 0
@@ -182,4 +187,4 @@ if __name__ == "__main__":
         "LC08_L1TP_201035_20191022_20200825_02_T1", "LC08_L1TP_201034_20191022_20200825_02_T1"]
     # process_group_band("B2",tr_group, t_srs, s2_tile, bnds, out_dir)
     # Run a full (SR + TIR) test with debug mode
-    process_group(tr_group, t_srs, s2_tile, bnds, out_dir, sr=True,debug=True)
+    process_group(tr_group, t_srs, s2_tile, bnds, out_dir, sr=True, only_sr_mask=False, no_tir=False, debug=True)
