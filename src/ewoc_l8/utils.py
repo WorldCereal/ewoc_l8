@@ -147,6 +147,34 @@ def rescale_array(array, factors):
     array[array < 0] = 0
     return array.astype(np.uint16)
 
+def qa_pixel_to_binary(qa_pixel_array):
+    """
+    Binarizes the fmask qa_pixel_array
+    :param array: The input array
+    :return: the binarized mask
+    """
+    # Define the nodata
+    nodata = qa_pixel_array == 1
+
+    # Define the to-be-masked qa_pixel_array values based on the bitmask
+    cirrus = 1 << 2
+    cloud = 1 << 3
+    shadow = 1 << 4
+    snow = 1 << 5
+
+    # Construct the "clear" mask
+    clear = ((qa_pixel_array & shadow == 0) &
+             (qa_pixel_array & cloud == 0) &
+             (qa_pixel_array & cirrus == 0) &
+             (qa_pixel_array & snow == 0))
+
+    # Contruct the final binary 0-1-255 mask
+    mask = np.zeros_like(qa_pixel_array)
+    mask[nodata] = 255
+    mask[clear] = 1
+
+    return mask.astype(np.uint8)
+
 
 def raster_to_ard(raster_path, band_num, raster_fn, factors=None):
     """
@@ -162,6 +190,8 @@ def raster_to_ard(raster_path, band_num, raster_fn, factors=None):
             raster_array = src.read()
             if band_num in bands_sr:
                 raster_array = rescale_array(raster_array, factors)
+            if band_num == "QA_PIXEL_SR":
+                raster_array = qa_pixel_to_binary(raster_array)
             meta = src.meta.copy()
     meta["driver"] = "GTiff"
     if band_num != "QA_PIXEL_TIR":
