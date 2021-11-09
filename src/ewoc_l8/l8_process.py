@@ -42,7 +42,7 @@ def process_group_band(band_num,tr_group,t_srs,s2_tile,bnds,res,out_dir,debug):
         dst_nodata=""
     band_num_alias = l8_to_s2[band_num]
     bucket = "usgs-landsat"
-    bucket_name = "world-cereal"
+    bucket_name = os.getenv("BUCKET")
     prefix = os.getenv("DEST_PREFIX")
     group_bands = []
     s3c = get_s3_client()
