@@ -51,7 +51,9 @@ def cli(verbose):
 )
 @click.option('--only_sr_mask', is_flag=True, help="Compute only SR masks")
 @click.option('--no_tir', is_flag=True, help="Do not compute TIR products")
-def run_l8_plan(plan_json, out_dir, sr, only_sr_mask, no_tir, debug):
+@click.option('--production_id', default="0000", help="Production ID that will be used to upload to s3 bucket. "
+                                                      "Default: 0000")
+def run_l8_plan(plan_json, out_dir, production_id, sr, only_sr_mask, no_tir, debug):
     """
     Run the Landsat-8 processer over a json plan
     :param plan_json: EWoC Plan in json format
@@ -68,6 +70,7 @@ def run_l8_plan(plan_json, out_dir, sr, only_sr_mask, no_tir, debug):
             process_group(
                 tr_group,
                 t_srs,
+                production_id=production_id,
                 s2_tile=s2_tile,
                 bnds=bnds,
                 out_dir=out_dir,
@@ -93,7 +96,9 @@ def run_l8_plan(plan_json, out_dir, sr, only_sr_mask, no_tir, debug):
 )
 @click.option('--only_sr_mask', is_flag=True, help="Compute only SR masks")
 @click.option('--no_tir', is_flag=True, help="Do not compute TIR products")
-def run_id(pid_group, s2_tile, out_dir, sr, only_sr_mask, no_tir, debug):
+@click.option('--production_id', default="0000", help="Production ID that will be used to upload to s3 bucket. "
+                                                      "Default: 0000")
+def run_id(pid_group, s2_tile, production_id, out_dir, sr, only_sr_mask, no_tir, debug):
     """
     Run Landsat-8 processor for one day
     :param pid_group: Landsat-8 group of ids (same date), separeted by space
@@ -107,7 +112,8 @@ def run_id(pid_group, s2_tile, out_dir, sr, only_sr_mask, no_tir, debug):
     tr_group = pid_group.split(" ")
     t_srs, bnds = get_tile_info(s2_tile)
     process_group(
-        tr_group, t_srs, s2_tile=s2_tile, bnds=bnds, out_dir=out_dir, sr=sr, only_sr_mask=only_sr_mask,
+        tr_group, t_srs, production_id=production_id,
+        s2_tile=s2_tile, bnds=bnds, out_dir=out_dir, sr=sr, only_sr_mask=only_sr_mask,
         no_tir=no_tir,
         debug=debug
     )
