@@ -66,8 +66,7 @@ def process_group_band(band_num,tr_group,production_id,t_srs,s2_tile,bnds,res,ou
             key = band_num
 
 
-
-        AWSS2L8C2Bucket().download_prd(band, Path(tmp_folder), filter_bands=[key])
+        AWSS2L8C2Bucket().download_prd(band, Path(tmp_folder), prd_items=[key])
     try:
         logger.info("Starting Re-projection")
         for raster in os.listdir(raster_folder):
