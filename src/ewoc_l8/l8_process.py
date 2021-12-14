@@ -1,12 +1,12 @@
 import logging
 import os
 import shutil
-
 from pathlib import Path
-from ewoc_dag.bucket.ewoc import EWOCARDBucket
-from ewoc_dag.bucket.aws import AWSS2L8C2Bucket
 
-from ewoc_l8.utils import ard_from_key, make_dir, get_mask, key_from_id, raster_to_ard
+from ewoc_dag.bucket.aws import AWSS2L8C2Bucket
+from ewoc_dag.bucket.ewoc import EWOCARDBucket
+from ewoc_l8.utils import (ard_from_key, get_mask, key_from_id, make_dir,
+                           raster_to_ard)
 
 logger = logging.getLogger(__name__)
 

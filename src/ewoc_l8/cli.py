@@ -2,7 +2,6 @@ import logging
 import sys
 
 import click
-
 from ewoc_l8.l8_process import process_group
 from ewoc_l8.utils import get_tile_info, json_to_dict
 

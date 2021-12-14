@@ -5,7 +5,6 @@ import os
 import boto3
 import numpy as np
 import rasterio
-
 from eotile.eotile_module import main
 
 logger = logging.getLogger(__name__)
