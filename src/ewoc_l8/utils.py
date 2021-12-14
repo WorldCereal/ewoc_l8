@@ -70,20 +70,6 @@ def binary_sr_qa(sr_qa_file):
     logging.info("Binary cloud mask - Done")
 
 
-def download_s3file(s3_full_key,out_file, bucket):
-    """
-    Download file from s3 object storage
-    :param s3_full_key: Object full path (bucket name, prefix, and key)
-    :param out_file: Full path and name of the output file
-    :param bucket: Bucket name
-    """
-    key = s3_full_key.split(bucket+"/")[1]
-    s3 = boto3.resource("s3")
-    object = s3.Object(bucket,key)
-    resp = object.get(RequestPayer="requester")
-    with open(out_file, "wb") as f:
-        for chunk in iter(lambda: resp["Body"].read(4096), b""):
-            f.write(chunk)
 
 def get_tile_info(s2_tile_id:str):
     s2_tile = main(s2_tile_id)[0]
