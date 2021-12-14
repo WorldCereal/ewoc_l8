@@ -6,11 +6,14 @@ from pathlib import Path
 from ewoc_dag.bucket.ewoc import EWOCARDBucket
 from ewoc_dag.bucket.aws import AWSS2L8C2Bucket
 
-from ewoc_l8.utils import ard_from_key,make_dir, get_mask, key_from_id, raster_to_ard
+from ewoc_l8.utils import ard_from_key, make_dir, get_mask, key_from_id, raster_to_ard
 
 logger = logging.getLogger(__name__)
 
-def process_group_band(band_num,tr_group,production_id,t_srs,s2_tile,bnds,res,out_dir,debug):
+
+def process_group_band(
+    band_num, tr_group, production_id, t_srs, s2_tile, bnds, res, out_dir, debug
+):
     """
     Process Landsat-8 band: Download, merge and clip to S2 tile footprint
     For one band, one date
@@ -26,20 +29,30 @@ def process_group_band(band_num,tr_group,production_id,t_srs,s2_tile,bnds,res,ou
     :return: Nothing
     """
     # Create list of same bands but different dates
-    l8_to_s2={'B2':'B02','B3':'B03','B4':'B04','B5':'B08','B6':'B11','B7':'B12','B10':'B10','QA_PIXEL_SR':'MASK',
-              'QA_PIXEL_TIR':'QA_PIXEL'}
+    l8_to_s2 = {
+        "B2": "B02",
+        "B3": "B03",
+        "B4": "B04",
+        "B5": "B08",
+        "B6": "B11",
+        "B7": "B12",
+        "B10": "B10",
+        "QA_PIXEL_SR": "MASK",
+        "QA_PIXEL_TIR": "QA_PIXEL",
+    }
 
     s2_scaling_factor = 10000
-    factors = {'a': 0.0000275 * s2_scaling_factor,
-               'b': -0.2 * s2_scaling_factor,
-               }  # Scaling factors
+    factors = {
+        "a": 0.0000275 * s2_scaling_factor,
+        "b": -0.2 * s2_scaling_factor,
+    }  # Scaling factors
 
     if band_num in ["QA_PIXEL_TIR", "QA_PIXEL_SR"]:
         sr_method = "near"
         dst_nodata = "-dstnodata 1"
     else:
         sr_method = "bilinear"
-        dst_nodata=""
+        dst_nodata = ""
     band_num_alias = l8_to_s2[band_num]
     bucket = "usgs-landsat"
     prefix = os.getenv("DEST_PREFIX")
@@ -47,24 +60,23 @@ def process_group_band(band_num,tr_group,production_id,t_srs,s2_tile,bnds,res,ou
     ewoc_ard_bucket = EWOCARDBucket(ewoc_dev_mode=True)
     for tr in tr_group:
         # tr = key_from_id(tr)
-        date,key = get_band_key(band_num,tr)
+        date, key = get_band_key(band_num, tr)
         group_bands.append(tr)
 
-    tmp_folder = os.path.join(out_dir,"tmp",date, band_num)
-    src_folder = os.path.join(out_dir,"tmp")
+    tmp_folder = os.path.join(out_dir, "tmp", date, band_num)
+    src_folder = os.path.join(out_dir, "tmp")
     make_dir(tmp_folder)
     group_bands = list(set(group_bands))
     group_bands.sort()
     ref_name = key_from_id(group_bands[0])
 
     for band in group_bands:
-        raster_folder = os.path.join(tmp_folder,band)
-        qa_bands = ['QA_PIXEL_SR', 'QA_PIXEL_TIR']
+        raster_folder = os.path.join(tmp_folder, band)
+        qa_bands = ["QA_PIXEL_SR", "QA_PIXEL_TIR"]
         if band_num in qa_bands:
             key = "QA_PIXEL"
         else:
             key = band_num
-
 
         AWSS2L8C2Bucket().download_prd(band, Path(tmp_folder), prd_items=[key])
     try:
@@ -74,46 +86,80 @@ def process_group_band(band_num,tr_group,production_id,t_srs,s2_tile,bnds,res,ou
             if res is not None:
                 cmd_proj = f"gdalwarp -tr {res} {res} -r {sr_method} -t_srs {t_srs} {raster} {raster[:-4]}_r.tif {dst_nodata}"
             else:
-                cmd_proj = f"gdalwarp -t_srs {t_srs} {raster} {raster[:-4]}_r.tif {dst_nodata}"
+                cmd_proj = (
+                    f"gdalwarp -t_srs {t_srs} {raster} {raster[:-4]}_r.tif {dst_nodata}"
+                )
             os.system(cmd_proj)
-        raster_list = " ".join([os.path.join(raster_folder, rst) for rst in os.listdir(raster_folder) if rst.endswith('_r.tif')])
+        raster_list = " ".join(
+            [
+                os.path.join(raster_folder, rst)
+                for rst in os.listdir(raster_folder)
+                if rst.endswith("_r.tif")
+            ]
+        )
         logger.info("Starting VRT creation")
         cmd_vrt = f"gdalbuildvrt -q {raster_folder}/hrmn_L8_band.vrt {raster_list}"
         os.system(cmd_vrt)
         logger.info("Starting Clip to S2 extent")
         cmd_clip = f"gdalwarp -te {bnds[0]} {bnds[1]} {bnds[2]} {bnds[3]} {raster_folder}/hrmn_L8_band.vrt {raster_folder}/hrmn_L8_band.tif "
         os.system(cmd_clip)
-        upload_name = ard_from_key(ref_name,band_num=band_num, s2_tile=s2_tile) + f'_{band_num_alias}.tif'
+        upload_name = (
+            ard_from_key(ref_name, band_num=band_num, s2_tile=s2_tile)
+            + f"_{band_num_alias}.tif"
+        )
         upload_path = os.path.join(production_id, upload_name)
         logger.info("Converting to EWoC ARD")
         if "QA_PIXEL" in band_num:
             if "SR" in band_num:
-                get_mask(os.path.join(raster_folder, 'hrmn_L8_band.tif'))
-            raster_to_ard(os.path.join(raster_folder, 'hrmn_L8_band.tif'), band_num,
-                          os.path.join(raster_folder, 'hrmn_L8_band_block.tif'))
-            ewoc_ard_bucket._upload_file(Path(raster_folder) / 'hrmn_L8_band_block.tif', upload_path)
-                                         #os.path.join(prefix, upload_name))
-            up_file_size = os.path.getsize(os.path.join(raster_folder, 'hrmn_L8_band_block.tif'))
+                get_mask(os.path.join(raster_folder, "hrmn_L8_band.tif"))
+            raster_to_ard(
+                os.path.join(raster_folder, "hrmn_L8_band.tif"),
+                band_num,
+                os.path.join(raster_folder, "hrmn_L8_band_block.tif"),
+            )
+            ewoc_ard_bucket._upload_file(
+                Path(raster_folder) / "hrmn_L8_band_block.tif", upload_path
+            )
+            # os.path.join(prefix, upload_name))
+            up_file_size = os.path.getsize(
+                os.path.join(raster_folder, "hrmn_L8_band_block.tif")
+            )
         else:
-            raster_to_ard(os.path.join(raster_folder, 'hrmn_L8_band.tif'),
-                          band_num,
-                          os.path.join(raster_folder, 'hrmn_L8_band_block.tif'),
-                          factors
-                          )
-            ewoc_ard_bucket._upload_file(Path(raster_folder) / 'hrmn_L8_band_block.tif', upload_path)
-            up_file_size = os.path.getsize(os.path.join(raster_folder, 'hrmn_L8_band_block.tif'))
+            raster_to_ard(
+                os.path.join(raster_folder, "hrmn_L8_band.tif"),
+                band_num,
+                os.path.join(raster_folder, "hrmn_L8_band_block.tif"),
+                factors,
+            )
+            ewoc_ard_bucket._upload_file(
+                Path(raster_folder) / "hrmn_L8_band_block.tif", upload_path
+            )
+            up_file_size = os.path.getsize(
+                os.path.join(raster_folder, "hrmn_L8_band_block.tif")
+            )
         return 1, up_file_size, upload_path, ewoc_ard_bucket.bucket_name
     except BaseException as e:
-        logger.info('Failed for group\n')
+        logger.info("Failed for group\n")
         logger.info(tr_group)
         logger.info(e)
-        return 0,0, "", ""
+        return 0, 0, "", ""
     finally:
         if not debug:
             shutil.rmtree(src_folder)
 
 
-def process_group(tr_group, t_srs, production_id, s2_tile, bnds, out_dir, sr, only_sr_mask, no_tir, debug):
+def process_group(
+    tr_group,
+    t_srs,
+    production_id,
+    s2_tile,
+    bnds,
+    out_dir,
+    sr,
+    only_sr_mask,
+    no_tir,
+    debug,
+):
     """
     Process a group of Landsat-8 ids, full bands or thermal only
     :param tr_group: A list of s3 ids for Landsat-8 raster on the usgs-landsat bucket
@@ -129,26 +175,53 @@ def process_group(tr_group, t_srs, production_id, s2_tile, bnds, out_dir, sr, on
     :param no_tir: Do not compute TIR products
     :return: Nothing
     """
-    res_dict={'B2':'10','B3':'10','B4':'10','B5':'10','B6':'20','B7':'20','B10':'30','QA_PIXEL_SR':'20',
-              'QA_PIXEL_TIR':'30'}
+    res_dict = {
+        "B2": "10",
+        "B3": "10",
+        "B4": "10",
+        "B5": "10",
+        "B6": "20",
+        "B7": "20",
+        "B10": "30",
+        "QA_PIXEL_SR": "20",
+        "QA_PIXEL_TIR": "30",
+    }
     if sr:
-        process_bands = ['QA_PIXEL_TIR', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B10', 'QA_PIXEL_SR']
+        process_bands = [
+            "QA_PIXEL_TIR",
+            "B2",
+            "B3",
+            "B4",
+            "B5",
+            "B6",
+            "B7",
+            "B10",
+            "QA_PIXEL_SR",
+        ]
     elif only_sr_mask:
-        process_bands = ['QA_PIXEL_SR']
+        process_bands = ["QA_PIXEL_SR"]
     elif no_tir:
-        process_bands = ['B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'QA_PIXEL_SR']
+        process_bands = ["B2", "B3", "B4", "B5", "B6", "B7", "QA_PIXEL_SR"]
     else:
-        process_bands = ['B10', 'QA_PIXEL_TIR']
+        process_bands = ["B10", "QA_PIXEL_TIR"]
     upload_count = 0
     total_size = 0
     paths = []
     for band in process_bands:
-        logger.info('Processing %s', band)
-        up_count, up_size, upload_path, bucket_name = process_group_band(band,tr_group,production_id,t_srs,s2_tile,bnds,
-                                                                         res = res_dict[band],
-                                                                         out_dir=out_dir,debug=debug)
-        upload_count+=up_count
-        total_size+=up_size
+        logger.info("Processing %s", band)
+        up_count, up_size, upload_path, bucket_name = process_group_band(
+            band,
+            tr_group,
+            production_id,
+            t_srs,
+            s2_tile,
+            bnds,
+            res=res_dict[band],
+            out_dir=out_dir,
+            debug=debug,
+        )
+        upload_count += up_count
+        total_size += up_size
         if os.path.dirname(upload_path) not in paths:
             paths.append(os.path.dirname(upload_path))
 
@@ -164,24 +237,28 @@ def process_group(tr_group, t_srs, production_id, s2_tile, bnds, out_dir, sr, on
     if tir_path is not None:
         path_list.append(f"s3://{bucket_name}/{tir_path}")
     if optic_path is not None:
-        path_list.append(f's3://{bucket_name}/{optic_path}')
+        path_list.append(f"s3://{bucket_name}/{optic_path}")
 
-    logging_string = f'Uploaded {upload_count} tif files to bucket |'+ (' ; '.join(path_list))
+    logging_string = f"Uploaded {upload_count} tif files to bucket |" + (
+        " ; ".join(path_list)
+    )
     print(logging_string)
 
 
-def get_band_key(band,tr):
+def get_band_key(band, tr):
     """
     Get the S3 band id from band name
     :param band: Band number B2/B3/B4/B5/B6/B7/B10/QA
     :param tr: Thermal band s3 id
     :return: date of the product and the s3 key
     """
-    sr_bands = ['B2','B3','B4','B5','B6','B7']
-    qa_bands=['QA_PIXEL_SR', 'QA_PIXEL_TIR']
-    st_bands = ['B10',]
+    sr_bands = ["B2", "B3", "B4", "B5", "B6", "B7"]
+    qa_bands = ["QA_PIXEL_SR", "QA_PIXEL_TIR"]
+    st_bands = [
+        "B10",
+    ]
     base = tr[:-11]
-    date = os.path.split(tr)[-1].split('_')[3]
+    date = os.path.split(tr)[-1].split("_")[3]
     key = None
     if band in st_bands:
         key = f"{base}_ST_{band.upper()}.TIF"
@@ -197,12 +274,25 @@ def get_band_key(band,tr):
 if __name__ == "__main__":
 
     from dataship.dag.utils import get_bounds
+
     s2_tile = "30SVG"
     t_srs = "EPSG:32730"
     bnds = get_bounds(s2_tile)
     out_dir = "."
     tr_group = [
-        "LC08_L1TP_201035_20191022_20200825_02_T1", "LC08_L1TP_201034_20191022_20200825_02_T1"]
+        "LC08_L1TP_201035_20191022_20200825_02_T1",
+        "LC08_L1TP_201034_20191022_20200825_02_T1",
+    ]
     # process_group_band("B2",tr_group, t_srs, s2_tile, bnds, out_dir)
     # Run a full (SR + TIR) test with debug mode
-    process_group(tr_group, t_srs, s2_tile, bnds, out_dir, sr=True, only_sr_mask=False, no_tir=False, debug=True)
+    process_group(
+        tr_group,
+        t_srs,
+        s2_tile,
+        bnds,
+        out_dir,
+        sr=True,
+        only_sr_mask=False,
+        no_tir=False,
+        debug=True,
+    )
