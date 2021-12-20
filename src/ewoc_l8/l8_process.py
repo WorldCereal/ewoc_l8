@@ -44,7 +44,7 @@ def process_group_band(band_num,tr_group,production_id,t_srs,s2_tile,bnds,res,ou
     bucket = "usgs-landsat"
     prefix = os.getenv("DEST_PREFIX")
     group_bands = []
-    ewoc_ard_bucket = EWOCARDBucket(ewoc_dev_mode=True)
+    ewoc_ard_bucket = EWOCARDBucket()
     for tr in tr_group:
         # tr = key_from_id(tr)
         date,key = get_band_key(band_num,tr)
