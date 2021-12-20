@@ -2,15 +2,15 @@ import logging
 import os
 import shutil
 
-from dataship.dag.utils import download_s3file
-from dataship.dag.s3man import upload_file, get_s3_client
-import rasterio
+from pathlib import Path
+from ewoc_dag.bucket.ewoc import EWOCARDBucket
+from ewoc_dag.bucket.aws import AWSS2L8C2Bucket
 
 from ewoc_l8.utils import ard_from_key,make_dir, get_mask, key_from_id, raster_to_ard
 
 logger = logging.getLogger(__name__)
 
-def process_group_band(band_num,tr_group,t_srs,s2_tile,bnds,res,out_dir,debug):
+def process_group_band(band_num,tr_group,production_id,t_srs,s2_tile,bnds,res,out_dir,debug):
     """
     Process Landsat-8 band: Download, merge and clip to S2 tile footprint
     For one band, one date
@@ -42,75 +42,85 @@ def process_group_band(band_num,tr_group,t_srs,s2_tile,bnds,res,out_dir,debug):
         dst_nodata=""
     band_num_alias = l8_to_s2[band_num]
     bucket = "usgs-landsat"
-    bucket_name = os.getenv("BUCKET")
     prefix = os.getenv("DEST_PREFIX")
     group_bands = []
-    s3c = get_s3_client()
+    ewoc_ard_bucket = EWOCARDBucket()
     for tr in tr_group:
-        tr = key_from_id(tr)
+        # tr = key_from_id(tr)
         date,key = get_band_key(band_num,tr)
-        group_bands.append(key)
+        group_bands.append(tr)
 
     tmp_folder = os.path.join(out_dir,"tmp",date, band_num)
     src_folder = os.path.join(out_dir,"tmp")
     make_dir(tmp_folder)
     group_bands = list(set(group_bands))
     group_bands.sort()
-    ref_name = group_bands[0]
+    ref_name = key_from_id(group_bands[0])
+
     for band in group_bands:
-        raster_fn = os.path.join(tmp_folder,os.path.split(band)[-1][:-11])
-        download_s3file(band, raster_fn, bucket)
+        raster_folder = os.path.join(tmp_folder,band)
+        qa_bands = ['QA_PIXEL_SR', 'QA_PIXEL_TIR']
+        if band_num in qa_bands:
+            key = "QA_PIXEL"
+        else:
+            key = band_num
+
+
+        AWSS2L8C2Bucket().download_prd(band, Path(tmp_folder), prd_items=[key])
     try:
         logger.info("Starting Re-projection")
-        for raster in os.listdir(tmp_folder):
-            raster = os.path.join(tmp_folder, raster)
+        for raster in os.listdir(raster_folder):
+            raster = os.path.join(raster_folder, raster)
             if res is not None:
                 cmd_proj = f"gdalwarp -tr {res} {res} -r {sr_method} -t_srs {t_srs} {raster} {raster[:-4]}_r.tif {dst_nodata}"
             else:
                 cmd_proj = f"gdalwarp -t_srs {t_srs} {raster} {raster[:-4]}_r.tif {dst_nodata}"
             os.system(cmd_proj)
-        raster_list = " ".join([os.path.join(tmp_folder, rst) for rst in os.listdir(tmp_folder) if rst.endswith('_r.tif')])
+        raster_list = " ".join([os.path.join(raster_folder, rst) for rst in os.listdir(raster_folder) if rst.endswith('_r.tif')])
         logger.info("Starting VRT creation")
-        cmd_vrt = f"gdalbuildvrt -q {tmp_folder}/hrmn_L8_band.vrt {raster_list}"
+        cmd_vrt = f"gdalbuildvrt -q {raster_folder}/hrmn_L8_band.vrt {raster_list}"
         os.system(cmd_vrt)
         logger.info("Starting Clip to S2 extent")
-        cmd_clip = f"gdalwarp -te {bnds[0]} {bnds[1]} {bnds[2]} {bnds[3]} {tmp_folder}/hrmn_L8_band.vrt {tmp_folder}/hrmn_L8_band.tif "
+        cmd_clip = f"gdalwarp -te {bnds[0]} {bnds[1]} {bnds[2]} {bnds[3]} {raster_folder}/hrmn_L8_band.vrt {raster_folder}/hrmn_L8_band.tif "
         os.system(cmd_clip)
         upload_name = ard_from_key(ref_name,band_num=band_num, s2_tile=s2_tile) + f'_{band_num_alias}.tif'
-        upload_path = os.path.join(prefix, upload_name)
+        upload_path = os.path.join(production_id, upload_name)
         logger.info("Converting to EWoC ARD")
         if "QA_PIXEL" in band_num:
             if "SR" in band_num:
-                get_mask(os.path.join(tmp_folder, 'hrmn_L8_band.tif'))
-            raster_to_ard(os.path.join(tmp_folder, 'hrmn_L8_band.tif'), band_num,
-                          os.path.join(tmp_folder, 'hrmn_L8_band_block.tif'))
-            upload_file(s3c, os.path.join(tmp_folder, 'hrmn_L8_band_block.tif'), bucket_name,
-                        os.path.join(prefix, upload_name))
-            up_file_size = os.path.getsize(os.path.join(tmp_folder, 'hrmn_L8_band_block.tif'))
+                get_mask(os.path.join(raster_folder, 'hrmn_L8_band.tif'))
+            raster_to_ard(os.path.join(raster_folder, 'hrmn_L8_band.tif'), band_num,
+                          os.path.join(raster_folder, 'hrmn_L8_band_block.tif'))
+            ewoc_ard_bucket._upload_file(Path(raster_folder) / 'hrmn_L8_band_block.tif', upload_path)
+                                         #os.path.join(prefix, upload_name))
+            up_file_size = os.path.getsize(os.path.join(raster_folder, 'hrmn_L8_band_block.tif'))
         else:
-            raster_to_ard(os.path.join(tmp_folder, 'hrmn_L8_band.tif'),
+            raster_to_ard(os.path.join(raster_folder, 'hrmn_L8_band.tif'),
                           band_num,
-                          os.path.join(tmp_folder, 'hrmn_L8_band_block.tif'),
+                          os.path.join(raster_folder, 'hrmn_L8_band_block.tif'),
                           factors
                           )
-            upload_file(s3c, os.path.join(tmp_folder, 'hrmn_L8_band_block.tif'), bucket_name, upload_path)
-            up_file_size = os.path.getsize(os.path.join(tmp_folder, 'hrmn_L8_band_block.tif'))
-        return 1, up_file_size, upload_path, bucket_name
-    except:
+            ewoc_ard_bucket._upload_file(Path(raster_folder) / 'hrmn_L8_band_block.tif', upload_path)
+            up_file_size = os.path.getsize(os.path.join(raster_folder, 'hrmn_L8_band_block.tif'))
+        return 1, up_file_size, upload_path, ewoc_ard_bucket.bucket_name
+    except BaseException as e:
         logger.info('Failed for group\n')
         logger.info(tr_group)
+        logger.info(e)
         return 0,0, "", ""
     finally:
         if not debug:
             shutil.rmtree(src_folder)
 
 
-def process_group(tr_group, t_srs, s2_tile, bnds, out_dir, sr, only_sr_mask, no_tir, debug):
+def process_group(tr_group, t_srs, production_id, s2_tile, bnds, out_dir, sr, only_sr_mask, no_tir, debug):
     """
     Process a group of Landsat-8 ids, full bands or thermal only
     :param tr_group: A list of s3 ids for Landsat-8 raster on the usgs-landsat bucket
     :param t_srs: Target projection system, to determined from the Sentinel-2 tile projection
     :param s2_tile: The id of the targeted Sentinel-2 ex 31TCJ (Toulouse)
+    :param production_id: Production ID that will be used to upload to s3 bucket
+    :type production_id: str
     :param bnds: Extent of the Sentinel-2 tile, you can get this using the function get_bounds from dataship/ewoc_dag
     :param out_dir: Output directory to store the temporary results, should be deleted on full completion
     :param sr: Set to True to get all the following bands B2/B3/B4/B5/B6/B7/B10/QA, False by default
@@ -134,7 +144,7 @@ def process_group(tr_group, t_srs, s2_tile, bnds, out_dir, sr, only_sr_mask, no_
     paths = []
     for band in process_bands:
         logger.info('Processing %s', band)
-        up_count, up_size, upload_path, bucket_name = process_group_band(band,tr_group,t_srs,s2_tile,bnds,
+        up_count, up_size, upload_path, bucket_name = process_group_band(band,tr_group,production_id,t_srs,s2_tile,bnds,
                                                                          res = res_dict[band],
                                                                          out_dir=out_dir,debug=debug)
         upload_count+=up_count
