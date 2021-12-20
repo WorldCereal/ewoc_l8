@@ -2,10 +2,11 @@ import logging
 import os
 import shutil
 
-import rasterio
-from ewoc_l8.utils import ard_from_key,make_dir, get_mask, key_from_id
 from dataship.dag.utils import download_s3file
 from dataship.dag.s3man import upload_file, get_s3_client
+import rasterio
+
+from ewoc_l8.utils import ard_from_key,make_dir, get_mask, key_from_id, raster_to_ard
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,12 @@ def process_group_band(band_num,tr_group,t_srs,s2_tile,bnds,res,out_dir,debug):
     # Create list of same bands but different dates
     l8_to_s2={'B2':'B02','B3':'B03','B4':'B04','B5':'B08','B6':'B11','B7':'B12','B10':'B10','QA_PIXEL_SR':'MASK',
               'QA_PIXEL_TIR':'QA_PIXEL'}
+
+    s2_scaling_factor = 10000
+    factors = {'a': 0.0000275 * s2_scaling_factor,
+               'b': -0.2 * s2_scaling_factor,
+               }  # Scaling factors
+
     if band_num in ["QA_PIXEL_TIR", "QA_PIXEL_SR"]:
         sr_method = "near"
         dst_nodata = "-dstnodata 1"
@@ -35,7 +42,7 @@ def process_group_band(band_num,tr_group,t_srs,s2_tile,bnds,res,out_dir,debug):
         dst_nodata=""
     band_num_alias = l8_to_s2[band_num]
     bucket = "usgs-landsat"
-    bucket_name = "world-cereal"
+    bucket_name = os.getenv("BUCKET")
     prefix = os.getenv("DEST_PREFIX")
     group_bands = []
     s3c = get_s3_client()
@@ -54,7 +61,7 @@ def process_group_band(band_num,tr_group,t_srs,s2_tile,bnds,res,out_dir,debug):
         raster_fn = os.path.join(tmp_folder,os.path.split(band)[-1][:-11])
         download_s3file(band, raster_fn, bucket)
     try:
-        logging.info("Starting Re-projection")
+        logger.info("Starting Re-projection")
         for raster in os.listdir(tmp_folder):
             raster = os.path.join(tmp_folder, raster)
             if res is not None:
@@ -63,15 +70,15 @@ def process_group_band(band_num,tr_group,t_srs,s2_tile,bnds,res,out_dir,debug):
                 cmd_proj = f"gdalwarp -t_srs {t_srs} {raster} {raster[:-4]}_r.tif {dst_nodata}"
             os.system(cmd_proj)
         raster_list = " ".join([os.path.join(tmp_folder, rst) for rst in os.listdir(tmp_folder) if rst.endswith('_r.tif')])
-        logging.info("Starting VRT creation")
+        logger.info("Starting VRT creation")
         cmd_vrt = f"gdalbuildvrt -q {tmp_folder}/hrmn_L8_band.vrt {raster_list}"
         os.system(cmd_vrt)
-        logging.info("Starting Clip to S2 extent")
+        logger.info("Starting Clip to S2 extent")
         cmd_clip = f"gdalwarp -te {bnds[0]} {bnds[1]} {bnds[2]} {bnds[3]} {tmp_folder}/hrmn_L8_band.vrt {tmp_folder}/hrmn_L8_band.tif "
         os.system(cmd_clip)
         upload_name = ard_from_key(ref_name,band_num=band_num, s2_tile=s2_tile) + f'_{band_num_alias}.tif'
         upload_path = os.path.join(prefix, upload_name)
-        logging.info("Converting to EWoC ARD")
+        logger.info("Converting to EWoC ARD")
         if "QA_PIXEL" in band_num:
             if "SR" in band_num:
                 get_mask(os.path.join(tmp_folder, 'hrmn_L8_band.tif'))
@@ -81,19 +88,24 @@ def process_group_band(band_num,tr_group,t_srs,s2_tile,bnds,res,out_dir,debug):
                         os.path.join(prefix, upload_name))
             up_file_size = os.path.getsize(os.path.join(tmp_folder, 'hrmn_L8_band_block.tif'))
         else:
-            raster_to_ard(os.path.join(tmp_folder, 'hrmn_L8_band.tif'),band_num,os.path.join(tmp_folder, 'hrmn_L8_band_block.tif'))
+            raster_to_ard(os.path.join(tmp_folder, 'hrmn_L8_band.tif'),
+                          band_num,
+                          os.path.join(tmp_folder, 'hrmn_L8_band_block.tif'),
+                          factors
+                          )
             upload_file(s3c, os.path.join(tmp_folder, 'hrmn_L8_band_block.tif'), bucket_name, upload_path)
             up_file_size = os.path.getsize(os.path.join(tmp_folder, 'hrmn_L8_band_block.tif'))
         return 1, up_file_size, upload_path, bucket_name
     except:
-        logging.info('Failed for group\n')
-        logging.info(tr_group)
+        logger.info('Failed for group\n')
+        logger.info(tr_group)
         return 0,0, "", ""
     finally:
         if not debug:
             shutil.rmtree(src_folder)
 
-def process_group(tr_group,t_srs,s2_tile, bnds,out_dir,sr,debug):
+
+def process_group(tr_group, t_srs, s2_tile, bnds, out_dir, sr, only_sr_mask, no_tir, debug):
     """
     Process a group of Landsat-8 ids, full bands or thermal only
     :param tr_group: A list of s3 ids for Landsat-8 raster on the usgs-landsat bucket
@@ -103,19 +115,25 @@ def process_group(tr_group,t_srs,s2_tile, bnds,out_dir,sr,debug):
     :param out_dir: Output directory to store the temporary results, should be deleted on full completion
     :param sr: Set to True to get all the following bands B2/B3/B4/B5/B6/B7/B10/QA, False by default
     :param debug: If True all the intermediate files and results will be kept locally
+    :param only_sr_mask: Compute only SR masks
+    :param no_tir: Do not compute TIR products
     :return: Nothing
     """
     res_dict={'B2':'10','B3':'10','B4':'10','B5':'10','B6':'20','B7':'20','B10':'30','QA_PIXEL_SR':'20',
               'QA_PIXEL_TIR':'30'}
     if sr:
         process_bands = ['QA_PIXEL_TIR', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B10', 'QA_PIXEL_SR']
+    elif only_sr_mask:
+        process_bands = ['QA_PIXEL_SR']
+    elif no_tir:
+        process_bands = ['B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'QA_PIXEL_SR']
     else:
         process_bands = ['B10', 'QA_PIXEL_TIR']
     upload_count = 0
     total_size = 0
     paths = []
     for band in process_bands:
-        logging.info(f'Processing {band}')
+        logger.info('Processing %s', band)
         up_count, up_size, upload_path, bucket_name = process_group_band(band,tr_group,t_srs,s2_tile,bnds,
                                                                          res = res_dict[band],
                                                                          out_dir=out_dir,debug=debug)
@@ -125,14 +143,20 @@ def process_group(tr_group,t_srs,s2_tile, bnds,out_dir,sr,debug):
             paths.append(os.path.dirname(upload_path))
 
     optic_path = None
+    tir_path = None
     for path in paths:
         if "TIR" in path:
             tir_path = path
         if "OPTIC" in path:
             optic_path = path
-    logging_string = f'Uploaded {upload_count} tif files to bucket | s3://{bucket_name}/{tir_path}'
+
+    path_list = []
+    if tir_path is not None:
+        path_list.append(f"s3://{bucket_name}/{tir_path}")
     if optic_path is not None:
-        logging_string += f' ; s3://{bucket_name}/{optic_path}'
+        path_list.append(f's3://{bucket_name}/{optic_path}')
+
+    logging_string = f'Uploaded {upload_count} tif files to bucket |'+ (' ; '.join(path_list))
     print(logging_string)
 
 
@@ -159,34 +183,6 @@ def get_band_key(band,tr):
         logging.info("Band not found")
     return date, key
 
-def raster_to_ard(raster_path, band_num, raster_fn):
-    """
-    Read raster and update internals to fit ewoc ard specs
-    :param raster_path: Path to raster file
-    :param band_num: Band number, B02 for example
-    :param raster_fn: Output raster path
-    """
-    with rasterio.Env(GDAL_CACHEMAX=2048):
-        with rasterio.open(raster_path,'r') as src:
-            raster_array = src.read()
-            meta = src.meta.copy()
-    meta["driver"] = "GTiff"
-    if band_num != "QA_PIXEL_TIR":
-        meta["nodata"] = 0
-    bands_10m = ['B2','B3','B4','B5']
-    blocksize = 512
-    if band_num in bands_10m:
-        blocksize = 1024
-    with rasterio.open(
-        raster_fn,
-        "w+",
-        **meta,
-        tiled=True,
-        compress="deflate",
-        blockxsize=blocksize,
-        blockysize=blocksize,
-    ) as out:
-        out.write(raster_array)
 
 if __name__ == "__main__":
 
@@ -199,4 +195,4 @@ if __name__ == "__main__":
         "LC08_L1TP_201035_20191022_20200825_02_T1", "LC08_L1TP_201034_20191022_20200825_02_T1"]
     # process_group_band("B2",tr_group, t_srs, s2_tile, bnds, out_dir)
     # Run a full (SR + TIR) test with debug mode
-    process_group(tr_group, t_srs, s2_tile, bnds, out_dir, sr=True,debug=True)
+    process_group(tr_group, t_srs, s2_tile, bnds, out_dir, sr=True, only_sr_mask=False, no_tir=False, debug=True)
