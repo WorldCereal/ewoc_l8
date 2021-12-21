@@ -2,10 +2,9 @@ import json
 import logging
 import os
 
-import boto3
+from eotile.eotile_module import main
 import numpy as np
 import rasterio
-from eotile.eotile_module import main
 
 logger = logging.getLogger(__name__)
 
