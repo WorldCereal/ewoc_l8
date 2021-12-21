@@ -2,7 +2,6 @@ import logging
 import sys
 
 import click
-
 from ewoc_l8.l8_process import process_group
 from ewoc_l8.utils import get_tile_info, json_to_dict
 
@@ -21,6 +20,7 @@ def set_logger(verbose_v):
     logging.basicConfig(
         level=loglevel, stream=sys.stdout, format=logformat, datefmt="%Y-%m-%d %H:%M:%S"
     )
+
 
 @click.group()
 @click.option(
@@ -42,17 +42,20 @@ def cli(verbose):
 @cli.command("l8_plan", help="Landsat-8 with a full plan as input")
 @click.option("-p", "--plan_json", help="EWoC Plan in json format")
 @click.option("-o", "--out_dir", help="Output directory")
-@click.option('--sr/--no-sr', default=False)
+@click.option("--sr/--no-sr", default=False)
 @click.option(
     "-d",
     "--debug",
     default=False,
     help="If True all the intermediate files and results will be kept locally",
 )
-@click.option('--only_sr_mask', is_flag=True, help="Compute only SR masks")
-@click.option('--no_tir', is_flag=True, help="Do not compute TIR products")
-@click.option('--production_id', default="0000", help="Production ID that will be used to upload to s3 bucket. "
-                                                      "Default: 0000")
+@click.option("--only_sr_mask", is_flag=True, help="Compute only SR masks")
+@click.option("--no_tir", is_flag=True, help="Do not compute TIR products")
+@click.option(
+    "--production_id",
+    default="0000",
+    help="Production ID that will be used to upload to s3 bucket. " "Default: 0000",
+)
 def run_l8_plan(plan_json, out_dir, production_id, sr, only_sr_mask, no_tir, debug):
     """
     Run the Landsat-8 processer over a json plan
@@ -77,7 +80,7 @@ def run_l8_plan(plan_json, out_dir, production_id, sr, only_sr_mask, no_tir, deb
                 sr=sr,
                 only_sr_mask=only_sr_mask,
                 no_tir=no_tir,
-                debug = debug,
+                debug=debug,
             )
 
 
@@ -87,17 +90,20 @@ def run_l8_plan(plan_json, out_dir, production_id, sr, only_sr_mask, no_tir, deb
 )
 @click.option("-t", "--s2_tile", help="Sentinel-2 tile id")
 @click.option("-o", "--out_dir", help="Output directory")
-@click.option('--sr/--no-sr', default=False)
+@click.option("--sr/--no-sr", default=False)
 @click.option(
     "-d",
     "--debug",
     default=False,
     help="If True all the intermediate files and results will be kept locally",
 )
-@click.option('--only_sr_mask', is_flag=True, help="Compute only SR masks")
-@click.option('--no_tir', is_flag=True, help="Do not compute TIR products")
-@click.option('--production_id', default="0000", help="Production ID that will be used to upload to s3 bucket. "
-                                                      "Default: 0000")
+@click.option("--only_sr_mask", is_flag=True, help="Compute only SR masks")
+@click.option("--no_tir", is_flag=True, help="Do not compute TIR products")
+@click.option(
+    "--production_id",
+    default="0000",
+    help="Production ID that will be used to upload to s3 bucket. " "Default: 0000",
+)
 def run_id(pid_group, s2_tile, production_id, out_dir, sr, only_sr_mask, no_tir, debug):
     """
     Run Landsat-8 processor for one day
@@ -112,11 +118,18 @@ def run_id(pid_group, s2_tile, production_id, out_dir, sr, only_sr_mask, no_tir,
     tr_group = pid_group.split(" ")
     t_srs, bnds = get_tile_info(s2_tile)
     process_group(
-        tr_group, t_srs, production_id=production_id,
-        s2_tile=s2_tile, bnds=bnds, out_dir=out_dir, sr=sr, only_sr_mask=only_sr_mask,
+        tr_group,
+        t_srs,
+        production_id=production_id,
+        s2_tile=s2_tile,
+        bnds=bnds,
+        out_dir=out_dir,
+        sr=sr,
+        only_sr_mask=only_sr_mask,
         no_tir=no_tir,
-        debug=debug
+        debug=debug,
     )
+
 
 if __name__ == "__main__":
     cli()
