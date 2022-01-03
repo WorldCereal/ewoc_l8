@@ -14,7 +14,7 @@ RUN apt-get update -y \
     && rm -rf /var/lib/apt/lists/*
 RUN pip3 install --no-cache-dir -U pip
 
-ARG EWOC_DAG_VERSION=0.4.1
+ARG EWOC_DAG_VERSION=0.4.0
 LABEL EWOC_DAG_VERSION="${EWOC_DAG_VERSION}"
 COPY ewoc-dag-${EWOC_DAG_VERSION}.tar.gz /opt
 RUN pip3 install --no-cache-dir /opt/ewoc-dag-${EWOC_DAG_VERSION}.tar.gz
