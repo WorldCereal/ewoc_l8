@@ -20,7 +20,7 @@ jobs:
       with:
         python-version: '3.8'
   
-    - name: Download Dataship
+    - name: Download ewoc_dag
       uses: robinraju/release-downloader@v1.1
       with:
         repository: "WorldCereal/ewoc_dataship"
@@ -40,8 +40,6 @@ jobs:
         pip install build
         pip install pylint
 
-    - name: Analysing the code with pylint
-      run: pylint --output-format=text $(find -type f -name "*.py" ! -path "**/venv/**")
 
     - name: Build package
       run: python -m build
