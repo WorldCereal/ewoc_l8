@@ -54,6 +54,8 @@ LABEL EWOC_DAG_VERSION="${EWOC_DAG_VERSION}"
 # Copy private python packages
 COPY ewoc_dag-${EWOC_DAG_VERSION}.tar.gz /tmp
 
+SHELL ["/bin/bash", "-c"]
+
 ENV EWOC_L8_VENV=/opt/ewoc_l8_venv
 RUN python3 -m virtualenv ${EWOC_L8_VENV} \
     && source ${EWOC_L8_VENV}/bin/activate \
