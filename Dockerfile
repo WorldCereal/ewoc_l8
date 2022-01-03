@@ -40,6 +40,7 @@ RUN apt-get update -y \
     python3-pip \
     virtualenv \
     gdal-bin \
+    git \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
