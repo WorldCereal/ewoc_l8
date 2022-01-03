@@ -48,12 +48,12 @@ jobs:
         id: cots-versions
         run: |
           sed -n '/^ARG/s/ARG *\(.*\)=\(.*\)/::set-output name=\1::\2/p' Dockerfile
-      - name: Download EWoC Dag
+      - name: Download EWoC DAG
         uses: robinraju/release-downloader@v1.1
         with:
           repository: "WorldCereal/ewoc_dataship"
           tag: "${{ steps.cots-versions.outputs.EWOC_DAG_VERSION }}"
-          fileName: "ewoc-dag-${{ steps.cots-versions.outputs.EWOC_DAG_VERSION }}.tar.gz"
+          fileName: "ewoc_dag-${{ steps.cots-versions.outputs.EWOC_DAG_VERSION }}.tar.gz"
           token: ${{ secrets.CS_ORG_TOKEN }}
       - name: Build Docker images
         uses: docker/build-push-action@v2.5.0
