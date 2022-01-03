@@ -62,3 +62,8 @@ jobs:
           push: ${{ startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+      - name: Validate
+        uses: addnab/docker-run-action@v3
+        with:
+          image: hfjcmwgl.gra5.container-registry.ovh.net/world-cereal/ewoc_l8:${{ steps.branch-name.outputs.NAME }}
+          run: /opt/entrypoint.sh python --version && /opt/entrypoint.sh pip show ewoc_s1 && /opt/entrypoint.sh pip list && /opt/entrypoint.sh ewoc_l8 --help
