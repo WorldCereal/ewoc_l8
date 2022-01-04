@@ -13,6 +13,10 @@ _logger = logging.getLogger(__name__)
 
 # ---- API ----
 
+def _get_default_prod_id()->str:
+    str_now=datetime.now().strftime("%Y%m%dT%H%M%S")
+    return f"0000_000_{str_now}"
+
 def run_l8_plan(plan_json, out_dir, production_id,
     only_sr=False,
     only_sr_mask=False,
@@ -87,10 +91,6 @@ def run_id(pid_group, s2_tile, out_dir, production_id,
 # The functions defined in this section are wrappers around the main Python
 # API allowing them to be called directly from the terminal as a CLI
 # executable/script.
-
-def _get_default_prod_id()->str:
-    str_now=datetime.now().strftime("%Y%m%dT%H%M%S")
-    return f"0000_000_{str_now}"
 
 def parse_args(args):
     """Parse command line parameters
