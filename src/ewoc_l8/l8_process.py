@@ -7,7 +7,7 @@ from tempfile import gettempdir
 from ewoc_dag.bucket.aws import AWSS2L8C2Bucket
 from ewoc_dag.bucket.ewoc import EWOCARDBucket
 from ewoc_l8.utils import (ard_from_key, get_mask, key_from_id, make_dir,
-                           raster_to_ard)
+                           raster_to_ard, get_tile_info)
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,6 @@ def process_group_band(
     :param s2_tile: The id of the targeted Sentinel-2 ex 31TCJ (Toulouse)
     :param bnds: Extent of the Sentinel-2 tile, you can get this using the function get_bounds from dataship/ewoc_dag
     :param res: Resampling resolution, could be 10 or 20 meters
-    :param sr: Set to True to get all the following bands B2/B3/B4/B5/B6/B7/B10/QA, False by default
     :param out_dir: Output directory to store the temporary results, should be deleted on full completion
     :param debug: If True all the intermediate files and results will be kept locally
     :return: Nothing
@@ -151,10 +150,8 @@ def process_group_band(
 
 def process_group(
     tr_group,
-    t_srs,
     production_id,
     s2_tile,
-    bnds,
     out_dir,
     only_sr=False,
     only_sr_mask=False,
@@ -164,11 +161,9 @@ def process_group(
     """
     Process a group of Landsat-8 ids, full bands or thermal only
     :param tr_group: A list of s3 ids for Landsat-8 raster on the usgs-landsat bucket
-    :param t_srs: Target projection system, to determined from the Sentinel-2 tile projection
     :param s2_tile: The id of the targeted Sentinel-2 ex 31TCJ (Toulouse)
     :param production_id: Production ID that will be used to upload to s3 bucket
     :type production_id: str
-    :param bnds: Extent of the Sentinel-2 tile, you can get this using the function get_bounds from dataship/ewoc_dag
     :param out_dir: Output directory to store the temporary results, should be deleted on full completion
     :param only_sr: Process only SR bands, default to False
     :param only_sr_mask: Process only SR masks, default to False
@@ -206,6 +201,8 @@ def process_group(
     else:
         process_bands = ["QA_PIXEL_TIR", "B2", "B3", "B4", "B5", "B6", "B7", "B10", "QA_PIXEL_SR"]
     logger.info("Following bands will be processed: %s", process_bands)
+
+    t_srs, bnds = get_tile_info(s2_tile)
 
     upload_count = 0
     total_size = 0
@@ -278,17 +275,13 @@ def get_band_key(band, tr):
 
 if __name__ == "__main__":
 
-    from ewoc_dag.utils import get_bounds
-
     _S2_TILE_ID = "30SVG"
 
     process_group(
         ["LC08_L1TP_201035_20191022_20200825_02_T1",
         "LC08_L1TP_201034_20191022_20200825_02_T1"],
-        "EPSG:32730",
         _S2_TILE_ID,
         "0000_000_0000",
-        get_bounds(_S2_TILE_ID),
         Path(gettempdir()),
         only_sr=True,
         only_sr_mask=False,

@@ -7,7 +7,7 @@ import sys
 
 from ewoc_l8 import __version__
 from ewoc_l8.l8_process import process_group
-from ewoc_l8.utils import get_tile_info, json_to_dict
+from ewoc_l8.utils import json_to_dict
 
 _logger = logging.getLogger(__name__)
 
@@ -38,15 +38,12 @@ def run_l8_plan(plan_json, out_dir, production_id,
         production_id = _get_default_prod_id()
 
     for s2_tile in plan:
-        t_srs, bnds = get_tile_info(s2_tile)
         l8_tirs = plan[s2_tile]["L8_TIRS"]
         for tr_group in l8_tirs:
             process_group(
                 tr_group,
-                t_srs,
                 production_id,
                 s2_tile,
-                bnds,
                 out_dir,
                 only_sr=only_sr,
                 only_sr_mask=only_sr_mask,
@@ -69,17 +66,15 @@ def run_id(pid_group, s2_tile, out_dir, production_id,
     :param only_tir: Process only TIR bands, default to False
     :param debug: If True all the intermediate files and results will be kept locally, default to False
     """
-    t_srs, bnds = get_tile_info(s2_tile)
+
 
     if production_id is None:
         production_id=_get_default_prod_id()
 
     process_group(
         pid_group,
-        t_srs,
         production_id,
         s2_tile,
-        bnds,
         str(out_dir),
         only_sr=only_sr,
         only_sr_mask=only_sr_mask,
