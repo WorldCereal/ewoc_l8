@@ -193,7 +193,7 @@ def main(args):
     """
     args = parse_args(args)
     setup_logging(args.loglevel)
-    _logger.info(args)
+    _logger.debug(args)
 
     if args.subparser_name == "prd_ids":
         run_id(args.l8c2l2_prd_ids,
