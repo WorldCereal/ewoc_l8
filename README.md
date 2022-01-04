@@ -24,11 +24,11 @@ You can also pull the latest docker image from the harbour or ecr registry
 Docker
 
 ```bash
-sudo docker run -ti --rm --env-file env.dev ewoc_l8 --verbose v l8_id -pid "LC08_L1TP_201035_20191022_20200825_02_T1 LC08_L1TP_201034_20191022_20200825_02_T1" -t 30STG -o ../out
+sudo docker run -ti --rm --env-file env.dev ewoc_l8 --verbose v l8_id -pid "LC08_L2SP_199029_20211216_20211223_02_T1 LC08_L2SP_199030_20211216_20211223_02_T1" -t 31TCJ -o ../out
 ```
 
 Python on host
 
 ```bash
-ewoc_l8 --verbose v l8_id -pid "LC08_L1TP_201035_20191022_20200825_02_T1 LC08_L1TP_201034_20191022_20200825_02_T1" -t 30STG -o ../out --sr
+ewoc_l8 --verbose v l8_id -pid "LC08_L2SP_199029_20211216_20211223_02_T1 LC08_L2SP_199030_20211216_20211223_02_T1" -t 31TCJ -o ../out --sr
 ```
