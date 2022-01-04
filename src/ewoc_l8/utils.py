@@ -53,29 +53,6 @@ def ard_from_key(key, s2_tile, band_num, out_dir=None):
     return raster_fn
 
 
-def binary_sr_qa(sr_qa_file):
-    src = rasterio.open(sr_qa_file, "r")
-    meta = src.meta.copy()
-    ds = src.read(1)
-    clear_px = [2, 4, 32, 66, 68, 96, 100, 130, 132, 160, 164]
-    msk = np.isin(ds, clear_px).astype(int)
-    ds[msk == 1] = 1
-    ds[msk == 0] = 0
-    raster_fn = sr_qa_file[:-4] + "_test.tif"
-    with rasterio.open(
-        raster_fn,
-        "w+",
-        **meta,
-        compress="deflate",
-        tiled=True,
-        blockxsize=512,
-        blockysize=512,
-    ) as out:
-        out.write(ds.astype(rasterio.uint16), 1)
-    src.close()
-    logging.info("Binary cloud mask - Done")
-
-
 def get_tile_info(s2_tile_id: str):
     s2_tile = main(s2_tile_id)[0]
     s2_tile_srs = (s2_tile["SRS"].values)[0]
@@ -100,47 +77,47 @@ def key_from_id(pid):
 
 
 def get_mask(sr_qa_pix):
-    src = rasterio.open(sr_qa_pix, "r")
-    meta = src.meta.copy()
-    meta["dtype"] = "uint8"
-    meta["nodata"] = 255
-    qa_pixel_array = src.read(1)
+    with rasterio.open(sr_qa_pix, "r") as src:
+        meta = src.meta.copy()
+        meta["dtype"] = "uint8"
+        meta["nodata"] = 255
+        qa_pixel_array = src.read(1)
 
-    # Define the nodata
-    nodata = qa_pixel_array == 1
+        # Define the nodata
+        nodata = qa_pixel_array == 1
 
-    # Define the to-be-masked qa_pixel_array values based on the bitmask
-    cirrus = 1 << 2
-    cloud = 1 << 3
-    shadow = 1 << 4
-    snow = 1 << 5
+        # Define the to-be-masked qa_pixel_array values based on the bitmask
+        cirrus = 1 << 2
+        cloud = 1 << 3
+        shadow = 1 << 4
+        snow = 1 << 5
 
-    # Construct the "clear" mask
-    clear = (
-        (qa_pixel_array & shadow == 0)
-        & (qa_pixel_array & cloud == 0)
-        & (qa_pixel_array & cirrus == 0)
-        & (qa_pixel_array & snow == 0)
-    )
+        # Construct the "clear" mask
+        clear = (
+            (qa_pixel_array & shadow == 0)
+            & (qa_pixel_array & cloud == 0)
+            & (qa_pixel_array & cirrus == 0)
+            & (qa_pixel_array & snow == 0)
+        )
 
-    # Contruct the final binary 0-1-255 mask
-    cld_mask = np.zeros_like(qa_pixel_array)
-    cld_mask[nodata] = 255
-    cld_mask[clear] = 1
-    cld_mask[nodata] = 255
+        # Contruct the final binary 0-1-255 mask
+        cld_mask = np.zeros_like(qa_pixel_array)
+        cld_mask[nodata] = 255
+        cld_mask[clear] = 1
+        cld_mask[nodata] = 255
 
-    raster_fn = sr_qa_pix
-    with rasterio.open(
-        raster_fn,
-        "w+",
-        **meta,
-        compress="deflate",
-        tiled=True,
-        blockxsize=512,
-        blockysize=512,
-    ) as out:
-        out.write(cld_mask.astype(rasterio.uint8), 1)
-    src.close()
+        raster_fn = sr_qa_pix
+        with rasterio.open(
+            raster_fn,
+            "w+",
+            **meta,
+            compress="deflate",
+            tiled=True,
+            blockxsize=512,
+            blockysize=512,
+        ) as out:
+            out.write(cld_mask.astype(rasterio.uint8), 1)
+
     logging.info("Binary cloud mask - Done")
 
 
