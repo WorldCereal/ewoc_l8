@@ -116,8 +116,7 @@ def process_group_band(
                 band_num,
                 os.path.join(raster_folder, "hrmn_L8_band_block.tif"),
             )
-            # TODO: Replace by upload_ard_raster()
-            ewoc_ard_bucket._upload_file(
+            ewoc_ard_bucket.upload_ard_raster(
                 Path(raster_folder) / "hrmn_L8_band_block.tif", upload_path
             )
             # os.path.join(prefix, upload_name))
@@ -131,8 +130,7 @@ def process_group_band(
                 os.path.join(raster_folder, "hrmn_L8_band_block.tif"),
                 factors,
             )
-            # TODO: Replace by upload_ard_raster()
-            ewoc_ard_bucket._upload_file(
+            ewoc_ard_bucket.upload_ard_raster(
                 Path(raster_folder) / "hrmn_L8_band_block.tif", upload_path
             )
             up_file_size = os.path.getsize(
