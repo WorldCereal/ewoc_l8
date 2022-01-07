@@ -1,5 +1,6 @@
 import logging
 import os
+import subprocess
 from pathlib import Path
 import shutil
 from tempfile import gettempdir
@@ -89,7 +90,7 @@ def process_group_band(
                 cmd_proj = (
                     f"gdalwarp -t_srs {t_srs} {raster} {raster[:-4]}_r.tif {dst_nodata}"
                 )
-            os.system(cmd_proj)
+            subprocess.run(cmd_proj, shell=True)
         raster_list = " ".join(
             [
                 os.path.join(raster_folder, rst)
@@ -99,10 +100,10 @@ def process_group_band(
         )
         logger.info("Starting VRT creation")
         cmd_vrt = f"gdalbuildvrt -q {raster_folder}/hrmn_L8_band.vrt {raster_list}"
-        os.system(cmd_vrt)
+        subprocess.run(cmd_vrt, shell=True)
         logger.info("Starting Clip to S2 extent")
         cmd_clip = f"gdalwarp -te {bnds[0]} {bnds[1]} {bnds[2]} {bnds[3]} {raster_folder}/hrmn_L8_band.vrt {raster_folder}/hrmn_L8_band.tif "
-        os.system(cmd_clip)
+        subprocess.run(cmd_clip, shell=True)
         upload_name = (
             ard_from_key(ref_name, band_num=band_num, s2_tile=s2_tile)
             + f"_{band_num_alias}.tif"
