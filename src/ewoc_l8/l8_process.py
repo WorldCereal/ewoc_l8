@@ -90,7 +90,15 @@ def process_group_band(
                 cmd_proj = (
                     f"gdalwarp -t_srs {t_srs} {raster} {raster[:-4]}_r.tif {dst_nodata}"
                 )
-            subprocess.run(cmd_proj, shell=True)
+            logger.debug("Launching command: %s", cmd_proj)
+            try:
+                subprocess.run(cmd_proj,
+                                       stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE,
+                                       shell=True)
+            except OSError as err:
+                logger.error('An error occurred while running command \'%s\'', cmd_proj, exc_info=True)
+                return err.errno, str(err), err.strerror
         raster_list = " ".join(
             [
                 os.path.join(raster_folder, rst)
@@ -98,17 +106,36 @@ def process_group_band(
                 if rst.endswith("_r.tif")
             ]
         )
+
         logger.info("Starting VRT creation")
         cmd_vrt = f"gdalbuildvrt -q {raster_folder}/hrmn_L8_band.vrt {raster_list}"
-        subprocess.run(cmd_vrt, shell=True)
+        logger.debug("Launching command: %s", cmd_vrt)
+        try:
+            subprocess.run(cmd_vrt,
+                                    stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE,
+                                    shell=True)
+        except OSError as err:
+            logger.error('An error occurred while running command \'%s\'', cmd_vrt, exc_info=True)
+            return err.errno, str(err), err.strerror
+
         logger.info("Starting Clip to S2 extent")
         cmd_clip = f"gdalwarp -te {bnds[0]} {bnds[1]} {bnds[2]} {bnds[3]} {raster_folder}/hrmn_L8_band.vrt {raster_folder}/hrmn_L8_band.tif "
-        subprocess.run(cmd_clip, shell=True)
+        logger.debug("Launching command: %s", cmd_clip)
+        try:
+            subprocess.run(cmd_clip,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        shell=True)
+        except OSError as err:
+            logger.error('An error occurred while running command \'%s\'', cmd_clip, exc_info=True)
+            return err.errno, str(err), err.strerror
         upload_name = (
             ard_from_key(ref_name, band_num=band_num, s2_tile=s2_tile)
             + f"_{band_num_alias}.tif"
         )
         upload_path = os.path.join(production_id, upload_name)
+
         logger.info("Converting to EWoC ARD")
         if "QA_PIXEL" in band_num:
             if "SR" in band_num:
