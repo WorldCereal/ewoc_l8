@@ -7,13 +7,13 @@ from tempfile import gettempdir
 from ewoc_dag.bucket.aws import AWSS2L8C2Bucket
 from ewoc_dag.bucket.ewoc import EWOCARDBucket
 from ewoc_l8.utils import (ard_from_key, get_mask, key_from_id, make_dir,
-                           raster_to_ard, get_tile_info)
+                           raster_to_ard, get_tile_info, execute_cmd)
 
 logger = logging.getLogger(__name__)
 
 
 def process_group_band(
-    band_num, tr_group, production_id, t_srs, s2_tile, bnds, res, out_dir, debug
+    band_num, tr_group, production_id, t_srs, s2_tile, bnds, res, out_dir, no_upload, debug
 ):
     """
     Process Landsat-8 band: Download, merge and clip to S2 tile footprint
@@ -25,6 +25,7 @@ def process_group_band(
     :param bnds: Extent of the Sentinel-2 tile, you can get this using the function get_bounds from dataship/ewoc_dag
     :param res: Resampling resolution, could be 10 or 20 meters
     :param out_dir: Output directory to store the temporary results, should be deleted on full completion
+    :param no_upload: If True the ard files are not uploaded to s3 bucket
     :param debug: If True all the intermediate files and results will be kept locally
     :return: Nothing
     """
@@ -88,7 +89,7 @@ def process_group_band(
                 cmd_proj = (
                     f"gdalwarp -t_srs {t_srs} {raster} {raster[:-4]}_r.tif {dst_nodata}"
                 )
-            os.system(cmd_proj)
+        execute_cmd(cmd_proj)
         raster_list = " ".join(
             [
                 os.path.join(raster_folder, rst)
@@ -96,17 +97,20 @@ def process_group_band(
                 if rst.endswith("_r.tif")
             ]
         )
+
         logger.info("Starting VRT creation")
         cmd_vrt = f"gdalbuildvrt -q {raster_folder}/hrmn_L8_band.vrt {raster_list}"
-        os.system(cmd_vrt)
+        execute_cmd(cmd_vrt)
+
         logger.info("Starting Clip to S2 extent")
         cmd_clip = f"gdalwarp -te {bnds[0]} {bnds[1]} {bnds[2]} {bnds[3]} {raster_folder}/hrmn_L8_band.vrt {raster_folder}/hrmn_L8_band.tif "
-        os.system(cmd_clip)
+        execute_cmd(cmd_clip)
         upload_name = (
             ard_from_key(ref_name, band_num=band_num, s2_tile=s2_tile)
             + f"_{band_num_alias}.tif"
         )
         upload_path = os.path.join(production_id, upload_name)
+
         logger.info("Converting to EWoC ARD")
         if "QA_PIXEL" in band_num:
             if "SR" in band_num:
@@ -116,9 +120,10 @@ def process_group_band(
                 band_num,
                 os.path.join(raster_folder, "hrmn_L8_band_block.tif"),
             )
-            ewoc_ard_bucket.upload_ard_raster(
-                Path(raster_folder) / "hrmn_L8_band_block.tif", upload_path
-            )
+            if not no_upload:
+                ewoc_ard_bucket.upload_ard_raster(
+                    Path(raster_folder) / "hrmn_L8_band_block.tif", upload_path
+                )
             # os.path.join(prefix, upload_name))
             up_file_size = os.path.getsize(
                 os.path.join(raster_folder, "hrmn_L8_band_block.tif")
@@ -130,9 +135,10 @@ def process_group_band(
                 os.path.join(raster_folder, "hrmn_L8_band_block.tif"),
                 factors,
             )
-            ewoc_ard_bucket.upload_ard_raster(
-                Path(raster_folder) / "hrmn_L8_band_block.tif", upload_path
-            )
+            if not no_upload:
+                ewoc_ard_bucket.upload_ard_raster(
+                    Path(raster_folder) / "hrmn_L8_band_block.tif", upload_path
+                )
             up_file_size = os.path.getsize(
                 os.path.join(raster_folder, "hrmn_L8_band_block.tif")
             )
@@ -154,6 +160,7 @@ def process_group(
     only_sr=False,
     only_sr_mask=False,
     only_tir=False,
+    no_upload=False,
     debug=False,
 ):
     """
@@ -166,6 +173,7 @@ def process_group(
     :param only_sr: Process only SR bands, default to False
     :param only_sr_mask: Process only SR masks, default to False
     :param only_tir: Process only TIR bands, default to False
+    :param no_upload: If True the ard files are not uploaded to s3 bucket, default to False
     :param debug: If True all the intermediate files and results will be kept locally, default to False
     :return: Nothing
     """
@@ -217,6 +225,7 @@ def process_group(
             bnds,
             res=res_dict[band],
             out_dir=out_dir,
+            no_upload=no_upload,
             debug=debug,
         )
         upload_count += up_count
@@ -238,10 +247,11 @@ def process_group(
     if optic_path is not None:
         path_list.append(f"s3://{bucket_name}/{optic_path}")
 
-    logging_string = f"Uploaded {upload_count} tif files to bucket |" + (
-        " ; ".join(path_list)
-    )
-    print(logging_string)
+    if not no_upload:
+	    logging_string = f"Uploaded {upload_count} tif files to bucket |" + (
+		" ; ".join(path_list)
+	    )
+	    print(logging_string)
 
 
 def get_band_key(band, tr):
@@ -284,5 +294,6 @@ if __name__ == "__main__":
         only_sr=True,
         only_sr_mask=False,
         only_tir=False,
+        no_upload=False,
         debug=True,
     )

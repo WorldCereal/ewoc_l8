@@ -21,6 +21,7 @@ def run_l8_plan(plan_json, out_dir, production_id,
     only_sr=False,
     only_sr_mask=False,
     only_tir=False,
+    no_upload=False,
     debug=False):
     """
     Run the Landsat-8 processer over a json plan
@@ -29,6 +30,7 @@ def run_l8_plan(plan_json, out_dir, production_id,
     :param only_sr: Process only SR bands, default to False
     :param only_sr_mask: Process only SR masks, default to False
     :param only_tir: Process only TIR bands, default to False
+    :param no_upload: If True the ard files are not uploaded to s3 bucket, default to False
     :param debug: If True all the intermediate files and results will be kept locally, default to False
     """
     plan = json_to_dict(plan_json)
@@ -48,6 +50,7 @@ def run_l8_plan(plan_json, out_dir, production_id,
                 only_sr=only_sr,
                 only_sr_mask=only_sr_mask,
                 only_tir=only_tir,
+                no_upload=no_upload,
                 debug=debug,
             )
 
@@ -55,6 +58,7 @@ def run_id(pid_group, s2_tile, out_dir, production_id,
     only_sr=False,
     only_sr_mask=False,
     only_tir=False,
+    no_upload=False,
     debug=False):
     """
     Run Landsat-8 processor for one day
@@ -64,6 +68,7 @@ def run_id(pid_group, s2_tile, out_dir, production_id,
     :param only_sr: Process only SR bands, default to False
     :param only_sr_mask: Process only SR masks, default to False
     :param only_tir: Process only TIR bands, default to False
+    :param no_upload: If True the ard files are not uploaded to s3 bucket, default to False
     :param debug: If True all the intermediate files and results will be kept locally, default to False
     """
 
@@ -79,6 +84,7 @@ def run_id(pid_group, s2_tile, out_dir, production_id,
         only_sr=only_sr,
         only_sr_mask=only_sr_mask,
         only_tir=only_tir,
+        no_upload=no_upload,
         debug=debug,
     )
 
@@ -198,6 +204,7 @@ def main(args):
             only_sr=args.only_sr,
             only_sr_mask=args.only_sr_mask,
             only_tir=args.only_tir,
+            no_upload=args.no_upload,
             debug=args.debug)
     elif args.subparser_name == "wp":
         run_l8_plan(args.wp,
@@ -206,6 +213,7 @@ def main(args):
             only_sr=args.only_sr,
             only_sr_mask=args.only_sr_mask,
             only_tir=args.only_tir,
+            no_upload=args.no_upload,
             debug=args.debug)
 
 def run():
