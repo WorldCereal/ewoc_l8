@@ -1,6 +1,5 @@
 import logging
 import os
-import subprocess
 from pathlib import Path
 import shutil
 from tempfile import gettempdir
@@ -8,7 +7,7 @@ from tempfile import gettempdir
 from ewoc_dag.bucket.aws import AWSS2L8C2Bucket
 from ewoc_dag.bucket.ewoc import EWOCARDBucket
 from ewoc_l8.utils import (ard_from_key, get_mask, key_from_id, make_dir,
-                           raster_to_ard, get_tile_info)
+                           raster_to_ard, get_tile_info, execute_cmd)
 
 logger = logging.getLogger(__name__)
 
@@ -90,15 +89,7 @@ def process_group_band(
                 cmd_proj = (
                     f"gdalwarp -t_srs {t_srs} {raster} {raster[:-4]}_r.tif {dst_nodata}"
                 )
-            logger.debug("Launching command: %s", cmd_proj)
-            try:
-                subprocess.run(cmd_proj,
-                                       stdout=subprocess.PIPE,
-                                       stderr=subprocess.PIPE,
-                                       shell=True)
-            except OSError as err:
-                logger.error('An error occurred while running command \'%s\'', cmd_proj, exc_info=True)
-                return err.errno, str(err), err.strerror
+        execute_cmd(cmd_proj)
         raster_list = " ".join(
             [
                 os.path.join(raster_folder, rst)
@@ -109,27 +100,11 @@ def process_group_band(
 
         logger.info("Starting VRT creation")
         cmd_vrt = f"gdalbuildvrt -q {raster_folder}/hrmn_L8_band.vrt {raster_list}"
-        logger.debug("Launching command: %s", cmd_vrt)
-        try:
-            subprocess.run(cmd_vrt,
-                                    stdout=subprocess.PIPE,
-                                    stderr=subprocess.PIPE,
-                                    shell=True)
-        except OSError as err:
-            logger.error('An error occurred while running command \'%s\'', cmd_vrt, exc_info=True)
-            return err.errno, str(err), err.strerror
+        execute_cmd(cmd_vrt)
 
         logger.info("Starting Clip to S2 extent")
         cmd_clip = f"gdalwarp -te {bnds[0]} {bnds[1]} {bnds[2]} {bnds[3]} {raster_folder}/hrmn_L8_band.vrt {raster_folder}/hrmn_L8_band.tif "
-        logger.debug("Launching command: %s", cmd_clip)
-        try:
-            subprocess.run(cmd_clip,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        shell=True)
-        except OSError as err:
-            logger.error('An error occurred while running command \'%s\'', cmd_clip, exc_info=True)
-            return err.errno, str(err), err.strerror
+        execute_cmd(cmd_clip)
         upload_name = (
             ard_from_key(ref_name, band_num=band_num, s2_tile=s2_tile)
             + f"_{band_num_alias}.tif"

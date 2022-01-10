@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import subprocess
 
 from eotile.eotile_module import main
 import numpy as np
@@ -172,3 +173,15 @@ def raster_to_ard(raster_path, band_num, raster_fn, factors=None):
         blockysize=blocksize,
     ) as out:
         out.write(raster_array)
+
+def execute_cmd(cmd):
+    """
+    Execute the given cmd.
+    :param cmd: The command and its parameters to execute
+    """
+    logger.debug("Launching command: %s", cmd)
+    try:
+        subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    except OSError as err:
+        logger.error('An error occurred while running command \'%s\'', cmd, exc_info=True)
+        return err.errno, str(err), err.strerror
