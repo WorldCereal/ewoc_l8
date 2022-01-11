@@ -3,7 +3,6 @@ import os
 from pathlib import Path
 import shutil
 from tempfile import gettempdir
-from pathlib import Path
 
 from ewoc_dag.bucket.aws import AWSS2L8C2Bucket
 from ewoc_dag.bucket.ewoc import EWOCARDBucket
