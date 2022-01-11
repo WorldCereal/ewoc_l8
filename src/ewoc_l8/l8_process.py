@@ -248,10 +248,10 @@ def process_group(
         path_list.append(f"s3://{bucket_name}/{optic_path}")
 
     if not no_upload:
-	    logging_string = f"Uploaded {upload_count} tif files to bucket |" + (
-		" ; ".join(path_list)
-	    )
-	    print(logging_string)
+        logging_string = f"Uploaded {upload_count} tif files to bucket |" + (
+    	" ; ".join(path_list)
+        )
+        print(logging_string)
 
 
 def get_band_key(band, tr):
