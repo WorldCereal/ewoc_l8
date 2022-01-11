@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import subprocess
+from pathlib import Path
 
 from eotile.eotile_module import main
 import numpy as np
@@ -17,7 +18,7 @@ def json_to_dict(path_to_json):
 
 
 def make_dir(fold_dir):
-    if not os.path.exists(fold_dir):
+    if not Path.exists(fold_dir):
         os.makedirs(fold_dir)
 
 
@@ -30,7 +31,7 @@ def ard_from_key(key, s2_tile, band_num, out_dir=None):
         measure_type = "TIR"
     else:
         logging.error("Unknown band")
-    product_id = os.path.split(key)[-1]
+    product_id = Path(key).parts[-1]
     platform = product_id.split("_")[0]
     processing_level = product_id.split("_")[1]
     processing_level_folder = "L1T"
@@ -39,17 +40,17 @@ def ard_from_key(key, s2_tile, band_num, out_dir=None):
     # Get tile id , remove the T in the beginning
     tile_id = s2_tile
     unique_id = f"{product_id.split('_')[2]}{product_id.split('_')[5]}{product_id.split('_')[6]}"
-    folder_st = os.path.join(
-        measure_type, tile_id[:2], tile_id[2], tile_id[3:], year, date.split("T")[0]
+    folder_st = Path(measure_type).joinpath(
+        tile_id[:2], tile_id[2], tile_id[3:], year, date.split("T")[0]
     )
     dir_name = (
         f"{platform}_{processing_level_folder}_{date}T235959_{unique_id}_{tile_id}"
     )
     out_name = f"{platform}_{processing_level}_{date}T235959_{unique_id}_{tile_id}"
-    raster_fn = os.path.join(folder_st, dir_name, out_name)
+    raster_fn = Path(folder_st).joinpath(dir_name, out_name)
     if out_dir is not None:
-        tmp = os.path.join(out_dir, folder_st, dir_name)
-        if not os.path.exists(tmp):
+        tmp = Path(out_dir).joinpath(folder_st, dir_name)
+        if not Path.exists(tmp):
             os.makedirs(tmp)
     return raster_fn
 
