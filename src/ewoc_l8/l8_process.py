@@ -6,7 +6,7 @@ from tempfile import gettempdir
 
 from ewoc_dag.bucket.aws import AWSS2L8C2Bucket
 from ewoc_dag.bucket.ewoc import EWOCARDBucket
-from ewoc_l8.utils import (ard_from_key, get_mask, key_from_id, make_dir,
+from ewoc_l8.utils import (ard_from_key, get_mask, key_from_id,
                            raster_to_ard, get_tile_info, execute_cmd)
 
 logger = logging.getLogger(__name__)
@@ -63,15 +63,15 @@ def process_group_band(
         date, key = get_band_key(band_num, tr)
         group_bands.append(tr)
 
-    tmp_folder = Path(out_dir).joinpath("tmp", date, band_num)
-    src_folder = Path(out_dir).joinpath("tmp")
-    make_dir(tmp_folder)
+    tmp_folder = out_dir / 'tmp' / str(date) / str(band_num)
+    src_folder = out_dir / 'tmp'
+    Path(tmp_folder).mkdir(parents=True, exist_ok=False)
     group_bands = list(set(group_bands))
     group_bands.sort()
     ref_name = key_from_id(group_bands[0])
 
     for band in group_bands:
-        raster_folder = Path(tmp_folder).joinpath(band)
+        raster_folder = Path(tmp_folder) / band
         qa_bands = ["QA_PIXEL_SR", "QA_PIXEL_TIR"]
         if band_num in qa_bands:
             key = "QA_PIXEL"
@@ -82,9 +82,9 @@ def process_group_band(
     try:
         logger.info("Starting Re-projection")
         for raster in os.listdir(raster_folder):
-            raster = Path(raster_folder).joinpath(raster).as_posix()
+            raster = Path(raster_folder) / raster
             if res is not None:
-                cmd_proj = f"gdalwarp -tr {res} {res} -r {sr_method} -t_srs {t_srs} {raster} {raster[:-4]}_r.tif {dst_nodata}"
+                cmd_proj = f"gdalwarp -tr {res} {res} -r {sr_method} -t_srs {t_srs} {raster} {raster.with_suffix('')}_r.tif {dst_nodata}"
             else:
                 cmd_proj = (
                     f"gdalwarp -t_srs {t_srs} {raster} {raster[:-4]}_r.tif {dst_nodata}"
@@ -92,7 +92,7 @@ def process_group_band(
         execute_cmd(cmd_proj)
         raster_list = " ".join(
             [
-                Path(raster_folder).joinpath(rst).as_posix()
+                str(Path(raster_folder) / rst)
                 for rst in os.listdir(raster_folder)
                 if rst.endswith("_r.tif")
             ]
@@ -109,39 +109,34 @@ def process_group_band(
             ard_from_key(ref_name, band_num=band_num, s2_tile=s2_tile).as_posix()
             + f"_{band_num_alias}.tif"
         )
-        upload_path = Path(production_id).joinpath(upload_name)
+        upload_path = Path(production_id) / upload_name
 
         logger.info("Converting to EWoC ARD")
         if "QA_PIXEL" in band_num:
             if "SR" in band_num:
-                get_mask(Path(raster_folder).joinpath("hrmn_L8_band.tif"))
+                get_mask(Path(raster_folder) / "hrmn_L8_band.tif")
             raster_to_ard(
-                Path(raster_folder).joinpath("hrmn_L8_band.tif"),
+                Path(raster_folder) / "hrmn_L8_band.tif",
                 band_num,
-                Path(raster_folder).joinpath("hrmn_L8_band_block.tif"),
+                Path(raster_folder) / "hrmn_L8_band_block.tif",
             )
             if not no_upload:
                 ewoc_ard_bucket.upload_ard_raster(
                     Path(raster_folder) / "hrmn_L8_band_block.tif", upload_path
                 )
-            # Path(prefix).joinpath(upload_name))
-            up_file_size = Path(
-                Path(raster_folder).joinpath("hrmn_L8_band_block.tif")
-            ).stat().st_size
+            up_file_size = (Path(raster_folder) / "hrmn_L8_band_block.tif").stat().st_size
         else:
             raster_to_ard(
-                Path(raster_folder).joinpath("hrmn_L8_band.tif"),
+                Path(raster_folder) / "hrmn_L8_band.tif",
                 band_num,
-                Path(raster_folder).joinpath("hrmn_L8_band_block.tif"),
+                Path(raster_folder) / "hrmn_L8_band_block.tif",
                 factors,
             )
             if not no_upload:
                 ewoc_ard_bucket.upload_ard_raster(
                     Path(raster_folder) / "hrmn_L8_band_block.tif", upload_path
                 )
-            up_file_size = Path(
-                Path(raster_folder).joinpath("hrmn_L8_band_block.tif")
-            ).stat().st_size
+            up_file_size = (Path(raster_folder) / "hrmn_L8_band_block.tif").stat().st_size
         return 1, up_file_size, upload_path, ewoc_ard_bucket.bucket_name
     except BaseException as e:
         logger.info("Failed for group\n")

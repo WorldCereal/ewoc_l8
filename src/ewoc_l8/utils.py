@@ -16,12 +16,6 @@ def json_to_dict(path_to_json):
         data = json.load(f)
     return data
 
-
-def make_dir(fold_dir):
-    if not Path.exists(fold_dir):
-        os.makedirs(fold_dir)
-
-
 def ard_from_key(key, s2_tile, band_num, out_dir=None):
     sr_bands = ["B2", "B3", "B4", "B5", "B6", "B7", "QA_PIXEL_SR"]
     st_bands = ["B10", "QA_PIXEL_TIR"]
@@ -40,18 +34,15 @@ def ard_from_key(key, s2_tile, band_num, out_dir=None):
     # Get tile id , remove the T in the beginning
     tile_id = s2_tile
     unique_id = f"{product_id.split('_')[2]}{product_id.split('_')[5]}{product_id.split('_')[6]}"
-    folder_st = Path(measure_type).joinpath(
-        tile_id[:2], tile_id[2], tile_id[3:], year, date.split("T")[0]
-    )
+    folder_st = Path(measure_type) / tile_id[:2] / tile_id[2] / tile_id[3:] / year / date.split("T")[0]
     dir_name = (
         f"{platform}_{processing_level_folder}_{date}T235959_{unique_id}_{tile_id}"
     )
     out_name = f"{platform}_{processing_level}_{date}T235959_{unique_id}_{tile_id}"
-    raster_fn = Path(folder_st).joinpath(dir_name, out_name)
+    raster_fn = Path(folder_st) / dir_name / out_name
     if out_dir is not None:
-        tmp = Path(out_dir).joinpath(folder_st, dir_name)
-        if not Path.exists(tmp):
-            os.makedirs(tmp)
+        tmp = Path(out_dir) / folder_st / dir_name
+        Path(tmp).mkdir(parents=True, exist_ok=False)
     return raster_fn
 
 
