@@ -87,7 +87,7 @@ def process_group_band(
                 cmd_proj = f"gdalwarp -tr {res} {res} -r {sr_method} -t_srs {t_srs} {raster} {raster.with_suffix('')}_r.tif {dst_nodata}"
             else:
                 cmd_proj = (
-                    f"gdalwarp -t_srs {t_srs} {raster} {raster[:-4]}_r.tif {dst_nodata}"
+                    f"gdalwarp -t_srs {t_srs} {raster} {raster.with_suffix('')}_r.tif {dst_nodata}"
                 )
         execute_cmd(cmd_proj)
         raster_list = " ".join(
