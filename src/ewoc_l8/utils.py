@@ -39,10 +39,10 @@ def ard_from_key(key, s2_tile, band_num, out_dir=None):
         f"{platform}_{processing_level_folder}_{date}T235959_{unique_id}_{tile_id}"
     )
     out_name = f"{platform}_{processing_level}_{date}T235959_{unique_id}_{tile_id}"
-    raster_fn = Path(folder_st) / dir_name / out_name
+    raster_fn = folder_st / dir_name / out_name
     if out_dir is not None:
         tmp = Path(out_dir) / folder_st / dir_name
-        Path(tmp).mkdir(parents=True, exist_ok=False)
+        tmp.mkdir(parents=True, exist_ok=False)
     return raster_fn
 
 
