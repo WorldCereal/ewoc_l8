@@ -243,7 +243,7 @@ def process_group(
 
     if not no_upload:
         logging_string = f"Uploaded {upload_count} tif files to bucket |" + (
-    	" ; ".join(path_list)
+        " ; ".join(path_list)
         )
         print(logging_string)
 
