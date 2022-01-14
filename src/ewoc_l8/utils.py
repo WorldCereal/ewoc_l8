@@ -1,11 +1,15 @@
 import json
 import logging
+import os
 import subprocess
 from pathlib import Path
+from datetime import datetime
 
 from eotile.eotile_module import main
 import numpy as np
 import rasterio
+
+from ewoc_l8 import __version__
 
 logger = logging.getLogger(__name__)
 
@@ -130,12 +134,14 @@ def rescale_array(array, factors):
     return array.astype(np.uint16)
 
 
-def raster_to_ard(raster_path, band_num, raster_fn, factors=None):
+def raster_to_ard(raster_path, band_num, raster_fn, date, l8_ids, factors=None):
     """
     Read raster and update internals to fit ewoc ard specs
     :param raster_path: Path to raster file
     :param band_num: Band number, B02 for example
     :param raster_fn: Output raster path
+    :param date: Output raster date
+    :param l8_ids: A list of s3 ids for Landsat-8 raster on the usgs-landsat bucket
     :param factors: dictionary of factors for a rescale of the raster values
     """
     bands_sr = ["B2", "B3", "B4", "B5", "B6", "B7"]
@@ -145,7 +151,17 @@ def raster_to_ard(raster_path, band_num, raster_fn, factors=None):
             meta = src.meta.copy()
             if band_num in bands_sr:
                 raster_array = rescale_array(raster_array, factors)
+    # Modify output metadata
     meta["driver"] = "GTiff"
+    meta["ACQUISITION_DATETIME"] = date
+    meta["TIFFTAG_DATETIME"] = str(datetime.now())
+    meta["TIFFTAG_IMAGEDESCRIPTION"] = 'EWoC Landsat-8 ARD'
+    processor_docker_version = os.getenv('EWOC_L8_DOCKER_VERSION')
+    if processor_docker_version is None:
+        meta["TIFFTAG_SOFTWARE"]='EWoC L8 Processor '+ str(__version__)
+    else:
+        meta["TIFFTAG_SOFTWARE"]='EWoC L8 Processor '+ str(__version__) + ' / ' + processor_docker_version
+    meta["INPUT_PRODUCTS"] = l8_ids
     if band_num != "QA_PIXEL_TIR":
         meta["nodata"] = 0
     if band_num == "QA_PIXEL_SR":

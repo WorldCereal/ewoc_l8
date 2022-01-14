@@ -119,6 +119,8 @@ def process_group_band(
                 raster_folder / "hrmn_L8_band.tif",
                 band_num,
                 raster_folder / "hrmn_L8_band_block.tif",
+		        str(date),
+            	tr_group,
             )
             if not no_upload:
                 ewoc_ard_bucket.upload_ard_raster(
@@ -131,6 +133,8 @@ def process_group_band(
                 band_num,
                 raster_folder / "hrmn_L8_band_block.tif",
                 factors,
+            	str(date),
+            	tr_group,
             )
             if not no_upload:
                 ewoc_ard_bucket.upload_ard_raster(
