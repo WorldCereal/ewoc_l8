@@ -20,7 +20,7 @@ def _get_default_prod_id()->str:
 
 def run_l8_plan(
     plan_json: str,
-    out_dir: Path, 
+    out_dir: Path,
     production_id: str,
     only_sr: bool = False,
     only_sr_mask: bool = False,
@@ -61,8 +61,8 @@ def run_l8_plan(
 
 def run_id(
     pid_group: List[str],
-    s2_tile: str, 
-    out_dir: Path,  
+    s2_tile: str,
+    out_dir: Path,
     production_id: str,
     only_sr: bool = False,
     only_sr_mask: bool = False,

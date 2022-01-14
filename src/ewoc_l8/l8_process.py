@@ -14,15 +14,15 @@ logger = logging.getLogger(__name__)
 
 
 def process_group_band(
-    band_num: str, 
+    band_num: str,
     tr_group: List[str],
-    production_id: str,  
-    t_srs: str,  
-    s2_tile: str,  
+    production_id: str,
+    t_srs: str,
+    s2_tile: str,
     bnds:Tuple[float, float, float, float],
-    res: int, 
-    out_dir: Path, 
-    no_upload: bool = False, 
+    res: int,
+    out_dir: Path,
+    no_upload: bool = False,
     debug: bool = False
 ):
     """
@@ -161,8 +161,8 @@ def process_group_band(
 def process_group(
     tr_group: List[str],
     production_id: str,
-    s2_tile: str, 
-    out_dir: Path, 
+    s2_tile: str,
+    out_dir: Path,
     only_sr: bool = False,
     only_sr_mask: bool = False,
     only_tir: bool = False,

@@ -12,14 +12,14 @@ logger = logging.getLogger(__name__)
 
 
 def json_to_dict(path_to_json: str):
-    with open(path_to_json) as f:
+    with open(path_to_json, encoding="utf8") as f:
         data = json.load(f)
     return data
 
 def ard_from_key(
-    key: str, 
-    s2_tile: str, 
-    band_num: str, 
+    key: str,
+    s2_tile: str,
+    band_num: str,
     out_dir: Path = None
 ):
     sr_bands = ["B2", "B3", "B4", "B5", "B6", "B7", "QA_PIXEL_SR"]
@@ -183,6 +183,6 @@ def execute_cmd(cmd: str):
             shell=True,
             check=True)
     except subprocess.CalledProcessError as err:
-        logger.error(f'Following error code %s \
-            occurred while running command %s with following output:\
-            %s / %s', err.returncode, err.cmd, err.stdout, err.stderr)
+        logger.error(f'Following error code {err.returncode} \
+            occurred while running command {err.cmd} with following output:\
+            {err.stdout} / {err.stderr}')
