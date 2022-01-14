@@ -173,7 +173,12 @@ def execute_cmd(cmd):
     """
     logger.debug("Launching command: %s", cmd)
     try:
-        subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-    except OSError as err:
-        logger.error('An error occurred while running command \'%s\'', cmd, exc_info=True)
-        return err.errno, str(err), err.strerror
+        subprocess.run(cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            shell=True,
+            check=True)
+    except subprocess.CalledProcessError as err:
+        logger.error(f'Following error code %s \
+            occurred while running command %s with following output:\
+            %s / %s', err.returncode, err.cmd, err.stdout, err.stderr)
