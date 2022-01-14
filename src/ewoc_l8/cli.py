@@ -4,6 +4,7 @@ import logging
 from pathlib import Path
 from tempfile import gettempdir
 import sys
+from typing import List
 
 from ewoc_l8 import __version__
 from ewoc_l8.l8_process import process_group
@@ -17,16 +18,20 @@ def _get_default_prod_id()->str:
     str_now=datetime.now().strftime("%Y%m%dT%H%M%S")
     return f"0000_000_{str_now}"
 
-def run_l8_plan(plan_json, out_dir, production_id,
-    only_sr=False,
-    only_sr_mask=False,
-    only_tir=False,
-    no_upload=False,
-    debug=False):
+def run_l8_plan(
+    plan_json: str,
+    out_dir: Path, 
+    production_id: str,
+    only_sr: bool = False,
+    only_sr_mask: bool = False,
+    only_tir: bool = False,
+    no_upload: bool = False,
+    debug: bool = False):
     """
     Run the Landsat-8 processer over a json plan
     :param plan_json: EWoC WorkPlan in json format
     :param out_dir: Output directory
+    :param production_id: Production ID that will be used to upload to s3 bucket
     :param only_sr: Process only SR bands, default to False
     :param only_sr_mask: Process only SR masks, default to False
     :param only_tir: Process only TIR bands, default to False
@@ -54,17 +59,22 @@ def run_l8_plan(plan_json, out_dir, production_id,
                 debug=debug,
             )
 
-def run_id(pid_group, s2_tile, out_dir, production_id,
-    only_sr=False,
-    only_sr_mask=False,
-    only_tir=False,
-    no_upload=False,
-    debug=False):
+def run_id(
+    pid_group: List[str],
+    s2_tile: str, 
+    out_dir: Path,  
+    production_id: str,
+    only_sr: bool = False,
+    only_sr_mask: bool = False,
+    only_tir: bool = False,
+    no_upload: bool = False,
+    debug: bool = False):
     """
     Run Landsat-8 processor for one day
     :param pid_group: Landsat-8 group of ids (same date and path)
     :param s2_tile: Sentinel-2 tile id
     :param out_dir: Output directory
+    :param production_id: Production ID that will be used to upload to s3 bucket
     :param only_sr: Process only SR bands, default to False
     :param only_sr_mask: Process only SR masks, default to False
     :param only_tir: Process only TIR bands, default to False

@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 import shutil
 from tempfile import gettempdir
+from typing import List, Tuple
 
 from ewoc_dag.bucket.aws import AWSS2L8C2Bucket
 from ewoc_dag.bucket.ewoc import EWOCARDBucket
@@ -13,13 +14,23 @@ logger = logging.getLogger(__name__)
 
 
 def process_group_band(
-    band_num, tr_group, production_id, t_srs, s2_tile, bnds, res, out_dir, no_upload, debug
+    band_num: str, 
+    tr_group: List[str],
+    production_id: str,  
+    t_srs: str,  
+    s2_tile: str,  
+    bnds:Tuple[float, float, float, float],
+    res: int, 
+    out_dir: Path, 
+    no_upload: bool = False, 
+    debug: bool = False
 ):
     """
     Process Landsat-8 band: Download, merge and clip to S2 tile footprint
     For one band, one date
     :param band_num: Landsat-8 band name, accepted values: ['B2','B3','B4','B5','B6','B7','B10','QA','QA_PIXEL']
     :param tr_group: A list of s3 ids for Landsat-8 raster on the usgs-landsat bucket
+    :param production_id: Production ID that will be used to upload to s3 bucket
     :param t_srs: Target projection system, to determined from the Sentinel-2 tile projection
     :param s2_tile: The id of the targeted Sentinel-2 ex 31TCJ (Toulouse)
     :param bnds: Extent of the Sentinel-2 tile, you can get this using the function get_bounds from dataship/ewoc_dag
@@ -148,15 +159,15 @@ def process_group_band(
             shutil.rmtree(src_folder)
 
 def process_group(
-    tr_group,
-    production_id,
-    s2_tile,
-    out_dir,
-    only_sr=False,
-    only_sr_mask=False,
-    only_tir=False,
-    no_upload=False,
-    debug=False,
+    tr_group: List[str],
+    production_id: str,
+    s2_tile: str, 
+    out_dir: Path, 
+    only_sr: bool = False,
+    only_sr_mask: bool = False,
+    only_tir: bool = False,
+    no_upload: bool = False,
+    debug: bool = False
 ):
     """
     Process a group of Landsat-8 ids, full bands or thermal only
@@ -248,7 +259,7 @@ def process_group(
         print(logging_string)
 
 
-def get_band_key(band, tr):
+def get_band_key(band: str, tr: str):
     """
     Get the S3 band id from band name
     :param band: Band number B2/B3/B4/B5/B6/B7/B10/QA

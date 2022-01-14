@@ -2,6 +2,7 @@ import json
 import logging
 import subprocess
 from pathlib import Path
+from typing import List, Dict
 
 from eotile.eotile_module import main
 import numpy as np
@@ -10,12 +11,17 @@ import rasterio
 logger = logging.getLogger(__name__)
 
 
-def json_to_dict(path_to_json):
+def json_to_dict(path_to_json: str):
     with open(path_to_json) as f:
         data = json.load(f)
     return data
 
-def ard_from_key(key, s2_tile, band_num, out_dir=None):
+def ard_from_key(
+    key: str, 
+    s2_tile: str, 
+    band_num: str, 
+    out_dir: Path = None
+):
     sr_bands = ["B2", "B3", "B4", "B5", "B6", "B7", "QA_PIXEL_SR"]
     st_bands = ["B10", "QA_PIXEL_TIR"]
     if band_num in sr_bands:
@@ -57,8 +63,7 @@ def get_tile_info(s2_tile_id: str):
 
     return s2_tile_srs, s2_tile_bb
 
-
-def key_from_id(pid):
+def key_from_id(pid: str):
     info = pid.split("_")
     date1 = info[3]
     date2 = info[4]
@@ -68,7 +73,7 @@ def key_from_id(pid):
     return key
 
 
-def get_mask(sr_qa_pix):
+def get_mask(sr_qa_pix: Path):
     with rasterio.open(sr_qa_pix, "r") as src:
         meta = src.meta.copy()
         meta["dtype"] = "uint8"
@@ -113,7 +118,7 @@ def get_mask(sr_qa_pix):
     logging.info("Binary cloud mask - Done")
 
 
-def rescale_array(array, factors):
+def rescale_array(array: List[int], factors: Dict[int, int]):
     """
     Rescales an array and forces it to np.uint16 :
     Applies array * factors['a'] + factors['b']
@@ -130,7 +135,7 @@ def rescale_array(array, factors):
     return array.astype(np.uint16)
 
 
-def raster_to_ard(raster_path, band_num, raster_fn, factors=None):
+def raster_to_ard(raster_path: Path, band_num: str, raster_fn: Path, factors: Dict[float, float] = None):
     """
     Read raster and update internals to fit ewoc ard specs
     :param raster_path: Path to raster file
@@ -165,7 +170,7 @@ def raster_to_ard(raster_path, band_num, raster_fn, factors=None):
     ) as out:
         out.write(raster_array)
 
-def execute_cmd(cmd):
+def execute_cmd(cmd: str):
     """
     Execute the given cmd.
     :param cmd: The command and its parameters to execute
