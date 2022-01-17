@@ -2,7 +2,8 @@ import json
 import logging
 import subprocess
 from pathlib import Path
-from typing import List, Dict
+from typing import Dict
+from nptyping import NDArray
 
 from eotile.eotile_module import main
 import numpy as np
@@ -118,7 +119,7 @@ def get_mask(sr_qa_pix: Path):
     logging.info("Binary cloud mask - Done")
 
 
-def rescale_array(array: List[int], factors: Dict[int, int]):
+def rescale_array(array: NDArray[int], factors: Dict[str, float]):
     """
     Rescales an array and forces it to np.uint16 :
     Applies array * factors['a'] + factors['b']
@@ -135,7 +136,7 @@ def rescale_array(array: List[int], factors: Dict[int, int]):
     return array.astype(np.uint16)
 
 
-def raster_to_ard(raster_path: Path, band_num: str, raster_fn: Path, factors: Dict[float, float] = None):
+def raster_to_ard(raster_path: Path, band_num: str, raster_fn: Path, factors: Dict[str, float] = None):
     """
     Read raster and update internals to fit ewoc ard specs
     :param raster_path: Path to raster file
@@ -183,6 +184,6 @@ def execute_cmd(cmd: str):
             shell=True,
             check=True)
     except subprocess.CalledProcessError as err:
-        logger.error(f'Following error code {err.returncode} \
-            occurred while running command {err.cmd} with following output:\
-            {err.stdout} / {err.stderr}')
+        logger.error('Following error code %s \
+            occurred while running command %s with following output:\
+            %s / %s', err.returncode, err.cmd, err.stdout, err.stderr)

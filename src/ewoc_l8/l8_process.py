@@ -20,7 +20,7 @@ def process_group_band(
     t_srs: str,
     s2_tile: str,
     bnds:Tuple[float, float, float, float],
-    res: int,
+    res: str,
     out_dir: Path,
     no_upload: bool = False,
     debug: bool = False
@@ -92,8 +92,8 @@ def process_group_band(
         AWSS2L8C2Bucket().download_prd(band, tmp_folder, prd_items=[key])
     try:
         logger.info("Starting Re-projection")
-        for raster in os.listdir(raster_folder):
-            raster = raster_folder / raster
+        for raster_file in os.listdir(raster_folder):
+            raster = raster_folder / raster_file
             if res is not None:
                 cmd_proj = f"gdalwarp -tr {res} {res} -r {sr_method} -t_srs {t_srs} {raster} {raster.with_suffix('')}_r.tif {dst_nodata}"
             else:
