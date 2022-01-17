@@ -161,7 +161,7 @@ def raster_to_ard(raster_path, band_num, raster_fn, date, l8_ids, factors=None):
         meta["TIFFTAG_SOFTWARE"]='EWoC L8 Processor '+ str(__version__)
     else:
         meta["TIFFTAG_SOFTWARE"]='EWoC L8 Processor '+ str(__version__) + ' / ' + processor_docker_version
-    meta["INPUT_PRODUCTS"] = l8_ids
+    meta["SOURCE_PRODUCTS"] = l8_ids
     if band_num != "QA_PIXEL_TIR":
         meta["nodata"] = 0
     if band_num == "QA_PIXEL_SR":
@@ -179,6 +179,7 @@ def raster_to_ard(raster_path, band_num, raster_fn, date, l8_ids, factors=None):
         blockxsize=blocksize,
         blockysize=blocksize,
     ) as out:
+        out.update_tags(**meta)
         out.write(raster_array)
 
 def execute_cmd(cmd):
