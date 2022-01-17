@@ -56,32 +56,54 @@ def process_group_band(
         dst_nodata = ""
     band_num_alias = l8_to_s2[band_num]
 
-    raster_list = []
+    group_bands = []
     ewoc_ard_bucket = EWOCARDBucket()
     for tr in tr_group:
+        # tr = key_from_id(tr)
         date, key = get_band_key(band_num, tr)
-        ref_name = key_from_id(key)
-
-        raster_list.append(ref_name)
-    
-    raster_list = " ".join(raster_list)
-    #logger.info(f'Raster list to process = {raster_list}')
+        group_bands.append(tr)
 
     tmp_folder = out_dir / 'tmp' / str(date) / str(band_num)
     src_folder = out_dir / 'tmp'
     tmp_folder.mkdir(parents=True, exist_ok=False)
-  
-    try:        
+    group_bands = list(set(group_bands))
+    group_bands.sort()
+    ref_name = key_from_id(group_bands[0])
+
+    for band in group_bands:
+        raster_folder = tmp_folder / band
+        qa_bands = ["QA_PIXEL_SR", "QA_PIXEL_TIR"]
+        if band_num in qa_bands:
+            key = "QA_PIXEL"
+        else:
+            key = band_num
+
+        AWSS2L8C2Bucket().download_prd(band, tmp_folder, prd_items=[key])
+    try:
+        logger.info("Starting Re-projection and Clip to S2 extent")
+        for raster in tmp_folder.rglob('*.TIF'):
+            if res is not None:
+                cmd_proj = f"gdalwarp -tr {res} {res} -r {sr_method} -t_srs {t_srs} -te {bnds[0]} {bnds[1]} {bnds[2]} {bnds[3]} {raster} {raster.with_suffix('')}_r.tif {dst_nodata}"
+            else:
+                cmd_proj = (
+                    f"gdalwarp -t_srs {t_srs} -te {bnds[0]} {bnds[1]} {bnds[2]} {bnds[3]} {raster} {raster.with_suffix('')}_r.tif {dst_nodata}"
+                )
+            execute_cmd(cmd_proj)
+        raster_list = " ".join(
+            [
+                str(rst)
+                for rst in sorted(tmp_folder.rglob('*_r.tif')) # sort by path and row
+            ]
+        )
+
         logger.info("Starting VRT creation")
         cmd_vrt = f"gdalbuildvrt -q {tmp_folder}/hrmn_L8_band.vrt {raster_list}"
         execute_cmd(cmd_vrt)
 
-        logger.info("Starting Re-projection and Clip to S2 extent")
-        if res is not None:
-            cmd_proj_clip = f"gdalwarp -tr {res} {res} -r {sr_method} -t_srs {t_srs} -te {bnds[0]} {bnds[1]} {bnds[2]} {bnds[3]} {tmp_folder}/hrmn_L8_band.vrt {tmp_folder}/hrmn_L8_band_{s2_tile}.tif -multi -co TILED=YES"
-        else:
-            cmd_proj_clip = f"gdalwarp -r {sr_method} -t_srs {t_srs} -te {bnds[0]} {bnds[1]} {bnds[2]} {bnds[3]} {tmp_folder}/hrmn_L8_band.vrt {tmp_folder}/hrmn_L8_band_{s2_tile}.tif -multi -co TILED=YES"
-        execute_cmd(cmd_proj_clip)
+        logger.info("Convertion to TIF")
+        cmd_tif = f"gdal_translate -q {tmp_folder}/hrmn_L8_band.vrt {tmp_folder}/hrmn_L8_band.tif"
+        execute_cmd(cmd_tif)
+
         upload_name = (
             str(ard_from_key(ref_name, band_num=band_num, s2_tile=s2_tile))
             + f"_{band_num_alias}.tif"
@@ -91,29 +113,29 @@ def process_group_band(
         logger.info("Converting to EWoC ARD")
         if "QA_PIXEL" in band_num:
             if "SR" in band_num:
-                get_mask(tmp_folder / f"hrmn_L8_band_{s2_tile}.tif")
+                get_mask(tmp_folder / "hrmn_L8_band.tif")
             raster_to_ard(
-                tmp_folder / f"hrmn_L8_band_{s2_tile}.tif",
+                tmp_folder / "hrmn_L8_band.tif",
                 band_num,
-                tmp_folder / f"hrmn_L8_band_{s2_tile}_block.tif",
+                tmp_folder / "hrmn_L8_band_block.tif",
             )
             if not no_upload:
                 ewoc_ard_bucket.upload_ard_raster(
-                    tmp_folder / f"hrmn_L8_band_{s2_tile}_block.tif", upload_path
+                    tmp_folder / "hrmn_L8_band_block.tif", upload_path
                 )
-            up_file_size = (tmp_folder / f"hrmn_L8_band_{s2_tile}_block.tif").stat().st_size
+            up_file_size = (tmp_folder / "hrmn_L8_band_block.tif").stat().st_size
         else:
             raster_to_ard(
-                tmp_folder / f"hrmn_L8_band_{s2_tile}.tif",
+                tmp_folder / "hrmn_L8_band.tif",
                 band_num,
-                tmp_folder / f"hrmn_L8_band_{s2_tile}_block.tif",
+                tmp_folder / "hrmn_L8_band_block.tif",
                 factors,
             )
             if not no_upload:
                 ewoc_ard_bucket.upload_ard_raster(
-                    tmp_folder / f"hrmn_L8_band_{s2_tile}_block.tif", upload_path
+                    tmp_folder / "hrmn_L8_band_block.tif", upload_path
                 )
-            up_file_size = (tmp_folder / f"hrmn_L8_band_{s2_tile}_block.tif").stat().st_size
+            up_file_size = (tmp_folder / "hrmn_L8_band_block.tif").stat().st_size
         return 1, up_file_size, upload_path, ewoc_ard_bucket.bucket_name
     except BaseException as e:
         logger.info("Failed for group\n")
@@ -236,15 +258,16 @@ def get_band_key(band, tr):
     qa_bands = ["QA_PIXEL_SR", "QA_PIXEL_TIR"]
     st_bands = ["B10"]
 
+    base = tr[:-11]
     date = Path(tr).parts[-1].split("_")[3]
     key = None
 
     if band in st_bands:
-        key = f"{tr}_ST_{band.upper()}.TIF"
+        key = f"{base}_ST_{band.upper()}.TIF"
     elif band in sr_bands:
-        key = f"{tr}_SR_{band.upper()}.TIF"
+        key = f"{base}_SR_{band.upper()}.TIF"
     elif band in qa_bands:
-        key = f"{tr}_QA_PIXEL.TIF"
+        key = f"{base}_QA_PIXEL.TIF"
     else:
         ValueError("Band ID {band} not valid!")
 
