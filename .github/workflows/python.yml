@@ -37,6 +37,7 @@ jobs:
         pip install "rasterio>=1.2,<1.3"
         pip install build
         pip install pylint
+        pip install nptyping
 
     - name: Analysing the code with pylint
       run: pylint --output-format=text $(find -type f -name "*.py" ! -path "**/venv/**")
