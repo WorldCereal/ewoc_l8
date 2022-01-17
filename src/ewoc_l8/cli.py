@@ -123,7 +123,9 @@ def parse_args(args):
         help= 'Skip the upload of ard files to s3 bucket')
     parser.add_argument("--prod-id",
         dest="prod_id",
-        help="Production ID that will be used to upload to s3 bucket, by default it is computed internally")
+        help="Production ID that will be used as prefix for the path used to save "\
+            " the results into the s3 bucket"\
+            ", by default it is computed internally")
 
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--only-tir", action='store_true',
