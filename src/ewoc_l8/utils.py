@@ -25,8 +25,7 @@ def ard_from_key(
     key: str,
     s2_tile: str,
     band_num: str,
-    out_dir: Path = None
-):
+    out_dir: Path = None)->Path:
     sr_bands = ["B2", "B3", "B4", "B5", "B6", "B7", "QA_PIXEL_SR"]
     st_bands = ["B10", "QA_PIXEL_TIR"]
     if band_num in sr_bands:
@@ -68,7 +67,7 @@ def get_tile_info(s2_tile_id: str):
 
     return s2_tile_srs, s2_tile_bb
 
-def key_from_id(pid: str):
+def key_from_id(pid: str)->str:
     info = pid.split("_")
     date1 = info[3]
     date2 = info[4]
@@ -195,7 +194,7 @@ def raster_to_ard(raster_path: Path,
 
         out.write(raster_array)
 
-def execute_cmd(cmd: str):
+def execute_cmd(cmd: str)->None:
     """
     Execute the given cmd.
     :param cmd: The command and its parameters to execute
