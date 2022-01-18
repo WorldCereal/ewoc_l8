@@ -30,14 +30,17 @@ def process_group_band(
     """
     Process Landsat-8 band: Download, merge and clip to S2 tile footprint
     For one band, one date
-    :param band_num: Landsat-8 band name, accepted values: ['B2','B3','B4','B5','B6','B7','B10','QA','QA_PIXEL']
+    :param band_num: Landsat-8 band name, accepted values:
+        ['B2','B3','B4','B5','B6','B7','B10','QA','QA_PIXEL']
     :param tr_group: A list of s3 ids for Landsat-8 raster on the usgs-landsat bucket
     :param production_id: Production ID that will be used to upload to s3 bucket
     :param t_srs: Target projection system, to determined from the Sentinel-2 tile projection
     :param s2_tile: The id of the targeted Sentinel-2 ex 31TCJ (Toulouse)
-    :param bnds: Extent of the Sentinel-2 tile, you can get this using the function get_bounds from dataship/ewoc_dag
+    :param bnds: Extent of the Sentinel-2 tile, you can get this using
+         the function get_bounds from dataship/ewoc_dag
     :param res: Resampling resolution, could be 10 or 20 meters
-    :param out_dir: Output directory to store the temporary results, should be deleted on full completion
+    :param out_dir: Output directory to store the temporary results,
+         should be deleted on full completion
     :param no_upload: If True the ard files are not uploaded to s3 bucket
     :param debug: If True all the intermediate files and results will be kept locally
     :return: Nothing
@@ -65,10 +68,9 @@ def process_group_band(
 
     group_bands = []
     ewoc_ard_bucket = EWOCARDBucket()
-    for tr in tr_group:
-        # tr = key_from_id(tr)
-        prd_date, key = get_band_key(band_num, tr)
-        group_bands.append(tr)
+    for prd_id in tr_group:
+        prd_date, key = get_band_key(band_num, prd_id)
+        group_bands.append(prd_id)
 
     tmp_folder = out_dir / 'tmp' / str(prd_date) / str(band_num)
     src_folder = out_dir / 'tmp'
@@ -148,10 +150,10 @@ def process_group_band(
                 )
             up_file_size = (raster_folder / "hrmn_L8_band_block.tif").stat().st_size
         return 1, up_file_size, upload_path, ewoc_ard_bucket.bucket_name
-    except BaseException as e:
+    except BaseException as err:
         logger.info("Failed for group\n")
         logger.info(tr_group)
-        logger.info(e)
+        logger.info(err)
         return 0, 0, "", ""
     finally:
         if not debug:
@@ -174,12 +176,14 @@ def process_group(
     :param s2_tile: The id of the targeted Sentinel-2 ex 31TCJ (Toulouse)
     :param production_id: Production ID that will be used to upload to s3 bucket
     :type production_id: str
-    :param out_dir: Output directory to store the temporary results, should be deleted on full completion
+    :param out_dir: Output directory to store the temporary results,
+         should be deleted on full completion
     :param only_sr: Process only SR bands, default to False
     :param only_sr_mask: Process only SR masks, default to False
     :param only_tir: Process only TIR bands, default to False
     :param no_upload: If True the ard files are not uploaded to s3 bucket, default to False
-    :param debug: If True all the intermediate files and results will be kept locally, default to False
+    :param debug: If True all the intermediate files and results will be kept locally,
+         default to False
     :return: Nothing
     """
     res_dict = {
