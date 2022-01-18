@@ -4,7 +4,7 @@ import logging
 import os
 from pathlib import Path
 import subprocess
-from typing import Dict
+from typing import List, Dict
 
 from eotile.eotile_module import main
 from nptyping import NDArray
@@ -140,7 +140,7 @@ def rescale_array(array: NDArray[int], factors: Dict[str, float] = None):
     return array.astype(np.uint16)
 
 
-def raster_to_ard(raster_path: Path, band_num: str, raster_fn: Path, prd_date, l8_ids: List[str], factors: Dict[str, float] = None):
+def raster_to_ard(raster_path: Path, band_num: str, raster_fn: Path, prd_date: datetime, l8_ids: List[str], factors: Dict[str, float] = None):
     """
     Read raster and update internals to fit ewoc ard specs
     :param raster_path: Path to raster file
