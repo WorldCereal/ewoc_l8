@@ -55,12 +55,6 @@ def process_group_band(
         "QA_PIXEL_TIR": "QA_PIXEL",
     }
 
-    s2_scaling_factor = 10000
-    factors = {
-        "a": 0.0000275 * s2_scaling_factor,
-        "b": -0.2 * s2_scaling_factor,
-    }  # Scaling factors
-
     if band_num in ["QA_PIXEL_TIR", "QA_PIXEL_SR"]:
         sr_method = "near"
         dst_nodata = "-dstnodata 1"
@@ -145,7 +139,6 @@ def process_group_band(
                 raster_folder / "hrmn_L8_band.tif",
                 band_num,
                 raster_folder / "hrmn_L8_band_block.tif",
-                factors,
                 prd_date,
             	tr_group,
             )

@@ -1,10 +1,10 @@
-from datetime import datetime
+from datetime import date, datetime
 import json
 import logging
 import os
 from pathlib import Path
 import subprocess
-from typing import Dict
+from typing import Dict, List
 
 from eotile.eotile_module import main
 from nptyping import NDArray
@@ -39,16 +39,16 @@ def ard_from_key(
     platform = product_id.split("_")[0]
     processing_level = product_id.split("_")[1]
     processing_level_folder = "L1T"
-    date = product_id.split("_")[3]
+    prd_date = product_id.split("_")[3]
     year = date[:4]
     # Get tile id , remove the T in the beginning
     tile_id = s2_tile
     unique_id = f"{product_id.split('_')[2]}{product_id.split('_')[5]}{product_id.split('_')[6]}"
-    folder_st = Path(measure_type) / tile_id[:2] / tile_id[2] / tile_id[3:] / year / date.split("T")[0]
+    folder_st = Path(measure_type) / tile_id[:2] / tile_id[2] / tile_id[3:] / year / prd_date.split("T")[0]
     dir_name = (
-        f"{platform}_{processing_level_folder}_{date}T235959_{unique_id}_{tile_id}"
+        f"{platform}_{processing_level_folder}_{prd_date}T235959_{unique_id}_{tile_id}"
     )
-    out_name = f"{platform}_{processing_level}_{date}T235959_{unique_id}_{tile_id}"
+    out_name = f"{platform}_{processing_level}_{prd_date}T235959_{unique_id}_{tile_id}"
     raster_fn = folder_st / dir_name / out_name
     if out_dir is not None:
         tmp = Path(out_dir) / folder_st / dir_name
@@ -123,7 +123,7 @@ def get_mask(sr_qa_pix: Path):
     logging.info("Binary cloud mask - Done")
 
 
-def rescale_array(array: NDArray[int], factors: Dict[str, float] = None):
+def rescale_array(array: NDArray[int], factors: Dict[str, float]):
     """
     Rescales an array and forces it to np.uint16 :
     Applies array * factors['a'] + factors['b']
@@ -131,16 +131,17 @@ def rescale_array(array: NDArray[int], factors: Dict[str, float] = None):
     :param factors: A dictionary containing the integer factors
     :return:
     """
-    if factors is None:
-        logger.error("factors are undefined")
-        raise ValueError
     logger.info("Rescaling Raster values")
     array = array * factors["a"] + factors["b"]
     array[array < 0] = 0
     return array.astype(np.uint16)
 
 
-def raster_to_ard(raster_path: Path, band_num: str, raster_fn: Path, prd_date, l8_ids: List[str], factors: Dict[str, float] = None):
+def raster_to_ard(raster_path: Path,
+    band_num: str,
+    raster_fn: Path,
+    prd_date:date,
+    l8_ids: List[str])->None:
     """
     Read raster and update internals to fit ewoc ard specs
     :param raster_path: Path to raster file
@@ -150,6 +151,12 @@ def raster_to_ard(raster_path: Path, band_num: str, raster_fn: Path, prd_date, l
     :param l8_ids: A list of s3 ids for Landsat-8 raster on the usgs-landsat bucket
     :param factors: dictionary of factors for a rescale of the raster values
     """
+    s2_scaling_factor = 10000
+    factors = {
+        "a": 0.0000275 * s2_scaling_factor,
+        "b": -0.2 * s2_scaling_factor,
+    }  # Scaling factors
+
     bands_sr = ["B2", "B3", "B4", "B5", "B6", "B7"]
     with rasterio.Env(GDAL_CACHEMAX=2048):
         with rasterio.open(raster_path, "r") as src:
