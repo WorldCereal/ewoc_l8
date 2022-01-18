@@ -39,7 +39,7 @@ def ard_from_key(
     processing_level = product_id.split("_")[1]
     processing_level_folder = "L1T"
     prd_date = product_id.split("_")[3]
-    year = date[:4]
+    year = prd_date[:4]
     # Get tile id , remove the T in the beginning
     tile_id = s2_tile
     unique_id = f"{product_id.split('_')[2]}{product_id.split('_')[5]}{product_id.split('_')[6]}"
