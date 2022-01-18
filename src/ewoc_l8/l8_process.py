@@ -1,9 +1,10 @@
+from datetime import date
 import logging
 import os
 from pathlib import Path
 import shutil
 from tempfile import gettempdir
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 from ewoc_dag.bucket.aws import AWSS2L8C2Bucket
 from ewoc_dag.bucket.ewoc import EWOCARDBucket
@@ -26,7 +27,7 @@ def process_group_band(
     out_dir: Path,
     no_upload: bool = False,
     debug: bool = False
-):
+)->Tuple[int,int,str,str]:
     """
     Process Landsat-8 band: Download, merge and clip to S2 tile footprint
     For one band, one date
@@ -169,7 +170,7 @@ def process_group(
     only_tir: bool = False,
     no_upload: bool = False,
     debug: bool = False
-):
+)->None:
     """
     Process a group of Landsat-8 ids, full bands or thermal only
     :param tr_group: A list of s3 ids for Landsat-8 raster on the usgs-landsat bucket
@@ -262,7 +263,7 @@ def process_group(
         print(logging_string)
 
 
-def get_band_key(band: str, prd_id: str):
+def get_band_key(band: str, prd_id: str)->Tuple[date,Optional[str]]:
     """
     Get the S3 band id from band name
     :param band: Band number B2/B3/B4/B5/B6/B7/B10/QA

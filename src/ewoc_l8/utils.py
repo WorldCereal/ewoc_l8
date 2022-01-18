@@ -4,7 +4,7 @@ import logging
 import os
 from pathlib import Path
 import subprocess
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 from eotile.eotile_module import main
 from nptyping import NDArray
@@ -16,7 +16,7 @@ from ewoc_l8 import __version__
 logger = logging.getLogger(__name__)
 
 
-def json_to_dict(path_to_json: str):
+def json_to_dict(path_to_json: str)->Dict:
     with open(path_to_json, encoding="utf8") as f:
         data = json.load(f)
     return data
@@ -54,8 +54,7 @@ def ard_from_key(
         tmp.mkdir(parents=True, exist_ok=False)
     return raster_fn
 
-
-def get_tile_info(s2_tile_id: str):
+def get_tile_info(s2_tile_id: str)-> Tuple[str,Tuple[float, float, float, float]]:
     s2_tile = main(s2_tile_id)[0]
     s2_tile_srs = (s2_tile["SRS"].values)[0]
     logger.info("SRS of %s is %s", s2_tile_id, s2_tile_srs)
@@ -76,8 +75,7 @@ def key_from_id(pid: str)->str:
     key = f"s3://usgs-landsat/collection02/level-2/standard/oli-tirs/{year}/{path}/{row}/LC08_L2SP_{path}{row}_{date1}_{date2}_02_T1/LC08_L2SP_{path}{row}_{date1}_{date2}_02_T1_ST_B10.TIF"
     return key
 
-
-def get_mask(sr_qa_pix: Path):
+def get_mask(sr_qa_pix: Path)->None:
     with rasterio.open(sr_qa_pix, "r") as src:
         meta = src.meta.copy()
         meta["dtype"] = "uint8"
@@ -121,8 +119,7 @@ def get_mask(sr_qa_pix: Path):
 
     logging.info("Binary cloud mask - Done")
 
-
-def rescale_array(array: NDArray[int], factors: Dict[str, float]):
+def rescale_array(array: NDArray[int], factors: Dict[str, float])->NDArray[int]:
     """
     Rescales an array and forces it to np.uint16 :
     Applies array * factors['a'] + factors['b']
@@ -139,7 +136,7 @@ def rescale_array(array: NDArray[int], factors: Dict[str, float]):
 def raster_to_ard(raster_path: Path,
     band_num: str,
     raster_fn: Path,
-    prd_date:date,
+    prd_date: date,
     l8_ids: List[str])->None:
     """
     Read raster and update internals to fit ewoc ard specs

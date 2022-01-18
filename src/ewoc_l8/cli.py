@@ -26,7 +26,7 @@ def run_l8_plan(
     only_sr_mask: bool = False,
     only_tir: bool = False,
     no_upload: bool = False,
-    debug: bool = False):
+    debug: bool = False)->None:
     """
     Run the Landsat-8 processer over a json plan
     :param plan_json: EWoC WorkPlan in json format
@@ -68,7 +68,7 @@ def run_id(
     only_sr_mask: bool = False,
     only_tir: bool = False,
     no_upload: bool = False,
-    debug: bool = False):
+    debug: bool = False)->None:
     """
     Run Landsat-8 processor for one day
     :param pid_group: Landsat-8 group of ids (same date and path)
@@ -103,7 +103,7 @@ def run_id(
 # API allowing them to be called directly from the terminal as a CLI
 # executable/script.
 
-def parse_args(args):
+def parse_args(args: List[str])->argparse.Namespace:
     """Parse command line parameters
 
     Args:
@@ -183,7 +183,7 @@ def parse_args(args):
 
     return args
 
-def setup_logging(loglevel):
+def setup_logging(loglevel:int)->None:
     """Setup basic logging
 
     Args:
@@ -194,7 +194,7 @@ def setup_logging(loglevel):
         level=loglevel, stream=sys.stdout, format=logformat, datefmt="%Y-%m-%d %H:%M:%S"
     )
 
-def main(args):
+def main(args: List[str])->None:
     """Wrapper allowing :func:`generate_l8_ard` to be called with string arguments in a CLI fashion
 
     Instead of returning the value from :func:`fib`, it prints the result to the
