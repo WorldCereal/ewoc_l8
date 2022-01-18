@@ -119,7 +119,7 @@ def get_mask(sr_qa_pix: Path):
     logging.info("Binary cloud mask - Done")
 
 
-def rescale_array(array: NDArray[int], factors: Dict[str, float]):
+def rescale_array(array: NDArray[int], factors: Dict[str, float] = None):
     """
     Rescales an array and forces it to np.uint16 :
     Applies array * factors['a'] + factors['b']
