@@ -1,13 +1,14 @@
 import argparse
 from datetime import datetime
+import json
 import logging
 from pathlib import Path
-from tempfile import gettempdir
 import sys
+from tempfile import gettempdir
+from typing import List
 
 from ewoc_l8 import __version__
 from ewoc_l8.l8_process import process_group
-from ewoc_l8.utils import json_to_dict
 
 _logger = logging.getLogger(__name__)
 
@@ -17,23 +18,29 @@ def _get_default_prod_id()->str:
     str_now=datetime.now().strftime("%Y%m%dT%H%M%S")
     return f"0000_000_{str_now}"
 
-def run_l8_plan(plan_json, out_dir, production_id,
-    only_sr=False,
-    only_sr_mask=False,
-    only_tir=False,
-    no_upload=False,
-    debug=False):
+def run_l8_plan(
+    plan_json: str,
+    out_dir: Path,
+    production_id: str,
+    only_sr: bool = False,
+    only_sr_mask: bool = False,
+    only_tir: bool = False,
+    no_upload: bool = False,
+    debug: bool = False)->None:
     """
     Run the Landsat-8 processer over a json plan
     :param plan_json: EWoC WorkPlan in json format
     :param out_dir: Output directory
+    :param production_id: Production ID that will be used to upload to s3 bucket
     :param only_sr: Process only SR bands, default to False
     :param only_sr_mask: Process only SR masks, default to False
     :param only_tir: Process only TIR bands, default to False
     :param no_upload: If True the ard files are not uploaded to s3 bucket, default to False
-    :param debug: If True all the intermediate files and results will be kept locally, default to False
+    :param debug: If True all the intermediate files and results will be kept locally,
+         default to False
     """
-    plan = json_to_dict(plan_json)
+    with open(plan_json, encoding="utf8") as f_wp:
+        plan = json.load(f_wp)
 
     if production_id is None:
         _logger.warning("Use computed production id but we must used the one in wp")
@@ -54,22 +61,28 @@ def run_l8_plan(plan_json, out_dir, production_id,
                 debug=debug,
             )
 
-def run_id(pid_group, s2_tile, out_dir, production_id,
-    only_sr=False,
-    only_sr_mask=False,
-    only_tir=False,
-    no_upload=False,
-    debug=False):
+def run_id(
+    pid_group: List[str],
+    s2_tile: str,
+    out_dir: Path,
+    production_id: str,
+    only_sr: bool = False,
+    only_sr_mask: bool = False,
+    only_tir: bool = False,
+    no_upload: bool = False,
+    debug: bool = False)->None:
     """
     Run Landsat-8 processor for one day
     :param pid_group: Landsat-8 group of ids (same date and path)
     :param s2_tile: Sentinel-2 tile id
     :param out_dir: Output directory
+    :param production_id: Production ID that will be used to upload to s3 bucket
     :param only_sr: Process only SR bands, default to False
     :param only_sr_mask: Process only SR masks, default to False
     :param only_tir: Process only TIR bands, default to False
     :param no_upload: If True the ard files are not uploaded to s3 bucket, default to False
-    :param debug: If True all the intermediate files and results will be kept locally, default to False
+    :param debug: If True all the intermediate files and results will be kept locally,
+         default to False
     """
 
 
@@ -93,15 +106,15 @@ def run_id(pid_group, s2_tile, out_dir, production_id,
 # API allowing them to be called directly from the terminal as a CLI
 # executable/script.
 
-def parse_args(args):
+def parse_args(arguments: List[str])->argparse.Namespace:
     """Parse command line parameters
 
     Args:
-      args (List[str]): command line parameters as list of strings
+      arguments: command line parameters as list of strings
           (for example  ``["--help"]``).
 
     Returns:
-      :obj:`argparse.Namespace`: command line parameters namespace
+      :obj: command line parameters namespace
     """
     parser = argparse.ArgumentParser(
         description="Generate EWoC L8 ARD")
@@ -166,35 +179,35 @@ def parse_args(args):
         help="EWoC workplan in json format",
         type=Path)
 
-    args = parser.parse_args(args)
+    args = parser.parse_args(arguments)
 
     if args.subparser_name is None:
         parser.print_help()
 
     return args
 
-def setup_logging(loglevel):
+def setup_logging(loglevel:int)->None:
     """Setup basic logging
 
     Args:
-      loglevel (int): minimum loglevel for emitting messages
+      loglevel: minimum loglevel for emitting messages
     """
     logformat = "[%(asctime)s] %(levelname)s:%(name)s:%(message)s"
     logging.basicConfig(
         level=loglevel, stream=sys.stdout, format=logformat, datefmt="%Y-%m-%d %H:%M:%S"
     )
 
-def main(args):
+def main(arguments: List[str])->None:
     """Wrapper allowing :func:`generate_l8_ard` to be called with string arguments in a CLI fashion
 
     Instead of returning the value from :func:`fib`, it prints the result to the
     ``stdout`` in a nicely formatted message.
 
     Args:
-      args (List[str]): command line parameters as list of strings
+      arguments: command line parameters as list of strings
           (for example  ``["--verbose", "42"]``).
     """
-    args = parse_args(args)
+    args = parse_args(arguments)
     setup_logging(args.loglevel)
     _logger.debug(args)
 
@@ -218,7 +231,7 @@ def main(args):
             no_upload=args.no_upload,
             debug=args.debug)
 
-def run():
+def run()->None:
     """Calls :func:`main` passing the CLI arguments extracted from :obj:`sys.argv`
 
     This function can be used as entry point to create console scripts with setuptools.

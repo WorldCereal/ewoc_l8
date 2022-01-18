@@ -1,8 +1,10 @@
+from datetime import date
 import logging
 import os
 from pathlib import Path
 import shutil
 from tempfile import gettempdir
+from typing import List, Optional, Tuple
 
 from ewoc_dag.bucket.aws import AWSS2L8C2Bucket
 from ewoc_dag.bucket.ewoc import EWOCARDBucket
@@ -15,18 +17,31 @@ logger = logging.getLogger(__name__)
 
 
 def process_group_band(
-    band_num, tr_group, production_id, t_srs, s2_tile, bnds, res, out_dir, no_upload, debug
-):
+    band_num: str,
+    tr_group: List[str],
+    production_id: str,
+    t_srs: str,
+    s2_tile: str,
+    bnds:Tuple[float, float, float, float],
+    res: str,
+    out_dir: Path,
+    no_upload: bool = False,
+    debug: bool = False
+)->Tuple[int,int,str,str]:
     """
     Process Landsat-8 band: Download, merge and clip to S2 tile footprint
     For one band, one date
-    :param band_num: Landsat-8 band name, accepted values: ['B2','B3','B4','B5','B6','B7','B10','QA','QA_PIXEL']
+    :param band_num: Landsat-8 band name, accepted values:
+        ['B2','B3','B4','B5','B6','B7','B10','QA','QA_PIXEL']
     :param tr_group: A list of s3 ids for Landsat-8 raster on the usgs-landsat bucket
+    :param production_id: Production ID that will be used to upload to s3 bucket
     :param t_srs: Target projection system, to determined from the Sentinel-2 tile projection
     :param s2_tile: The id of the targeted Sentinel-2 ex 31TCJ (Toulouse)
-    :param bnds: Extent of the Sentinel-2 tile, you can get this using the function get_bounds from dataship/ewoc_dag
+    :param bnds: Extent of the Sentinel-2 tile, you can get this using
+         the function get_bounds from dataship/ewoc_dag
     :param res: Resampling resolution, could be 10 or 20 meters
-    :param out_dir: Output directory to store the temporary results, should be deleted on full completion
+    :param out_dir: Output directory to store the temporary results,
+         should be deleted on full completion
     :param no_upload: If True the ard files are not uploaded to s3 bucket
     :param debug: If True all the intermediate files and results will be kept locally
     :return: Nothing
@@ -44,12 +59,6 @@ def process_group_band(
         "QA_PIXEL_TIR": "QA_PIXEL",
     }
 
-    s2_scaling_factor = 10000
-    factors = {
-        "a": 0.0000275 * s2_scaling_factor,
-        "b": -0.2 * s2_scaling_factor,
-    }  # Scaling factors
-
     if band_num in ["QA_PIXEL_TIR", "QA_PIXEL_SR"]:
         sr_method = "near"
         dst_nodata = "-dstnodata 1"
@@ -60,10 +69,9 @@ def process_group_band(
 
     group_bands = []
     ewoc_ard_bucket = EWOCARDBucket()
-    for tr in tr_group:
-        # tr = key_from_id(tr)
-        prd_date, key = get_band_key(band_num, tr)
-        group_bands.append(tr)
+    for prd_id in tr_group:
+        prd_date, key = get_band_key(band_num, prd_id)
+        group_bands.append(prd_id)
 
     tmp_folder = out_dir / 'tmp' / str(prd_date) / str(band_num)
     src_folder = out_dir / 'tmp'
@@ -83,8 +91,8 @@ def process_group_band(
         AWSS2L8C2Bucket().download_prd(band, tmp_folder, prd_items=[key])
     try:
         logger.info("Starting Re-projection")
-        for raster in os.listdir(raster_folder):
-            raster = raster_folder / raster
+        for raster_file in os.listdir(raster_folder):
+            raster = raster_folder / raster_file
             if res is not None:
                 cmd_proj = f"gdalwarp -tr {res} {res} -r {sr_method} -t_srs {t_srs} {raster} {raster.with_suffix('')}_r.tif {dst_nodata}"
             else:
@@ -134,7 +142,6 @@ def process_group_band(
                 raster_folder / "hrmn_L8_band.tif",
                 band_num,
                 raster_folder / "hrmn_L8_band_block.tif",
-                factors,
                 prd_date,
             	tr_group,
             )
@@ -144,38 +151,40 @@ def process_group_band(
                 )
             up_file_size = (raster_folder / "hrmn_L8_band_block.tif").stat().st_size
         return 1, up_file_size, upload_path, ewoc_ard_bucket.bucket_name
-    except BaseException as e:
+    except BaseException as err:
         logger.info("Failed for group\n")
         logger.info(tr_group)
-        logger.info(e)
+        logger.info(err)
         return 0, 0, "", ""
     finally:
         if not debug:
             shutil.rmtree(src_folder)
 
 def process_group(
-    tr_group,
-    production_id,
-    s2_tile,
-    out_dir,
-    only_sr=False,
-    only_sr_mask=False,
-    only_tir=False,
-    no_upload=False,
-    debug=False,
-):
+    tr_group: List[str],
+    production_id: str,
+    s2_tile: str,
+    out_dir: Path,
+    only_sr: bool = False,
+    only_sr_mask: bool = False,
+    only_tir: bool = False,
+    no_upload: bool = False,
+    debug: bool = False
+)->None:
     """
     Process a group of Landsat-8 ids, full bands or thermal only
     :param tr_group: A list of s3 ids for Landsat-8 raster on the usgs-landsat bucket
     :param s2_tile: The id of the targeted Sentinel-2 ex 31TCJ (Toulouse)
     :param production_id: Production ID that will be used to upload to s3 bucket
     :type production_id: str
-    :param out_dir: Output directory to store the temporary results, should be deleted on full completion
+    :param out_dir: Output directory to store the temporary results,
+         should be deleted on full completion
     :param only_sr: Process only SR bands, default to False
     :param only_sr_mask: Process only SR masks, default to False
     :param only_tir: Process only TIR bands, default to False
     :param no_upload: If True the ard files are not uploaded to s3 bucket, default to False
-    :param debug: If True all the intermediate files and results will be kept locally, default to False
+    :param debug: If True all the intermediate files and results will be kept locally,
+         default to False
     :return: Nothing
     """
     res_dict = {
@@ -254,7 +263,7 @@ def process_group(
         print(logging_string)
 
 
-def get_band_key(band, prd_id):
+def get_band_key(band: str, prd_id: str)->Tuple[date,Optional[str]]:
     """
     Get the S3 band id from band name
     :param band: Band number B2/B3/B4/B5/B6/B7/B10/QA

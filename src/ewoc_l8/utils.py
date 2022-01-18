@@ -1,11 +1,12 @@
-import json
+from datetime import date, datetime
 import logging
 import os
-import subprocess
 from pathlib import Path
-from datetime import datetime
+import subprocess
+from typing import Dict, List, Tuple
 
 from eotile.eotile_module import main
+from nptyping import NDArray
 import numpy as np
 import rasterio
 
@@ -14,12 +15,11 @@ from ewoc_l8 import __version__
 logger = logging.getLogger(__name__)
 
 
-def json_to_dict(path_to_json):
-    with open(path_to_json) as f:
-        data = json.load(f)
-    return data
-
-def ard_from_key(key, s2_tile, band_num, out_dir=None):
+def ard_from_key(
+    key: str,
+    s2_tile: str,
+    band_num: str,
+    out_dir: Path = None)->Path:
     sr_bands = ["B2", "B3", "B4", "B5", "B6", "B7", "QA_PIXEL_SR"]
     st_bands = ["B10", "QA_PIXEL_TIR"]
     if band_num in sr_bands:
@@ -32,37 +32,35 @@ def ard_from_key(key, s2_tile, band_num, out_dir=None):
     platform = product_id.split("_")[0]
     processing_level = product_id.split("_")[1]
     processing_level_folder = "L1T"
-    date = product_id.split("_")[3]
-    year = date[:4]
+    prd_date = product_id.split("_")[3]
+    year = prd_date[:4]
     # Get tile id , remove the T in the beginning
     tile_id = s2_tile
     unique_id = f"{product_id.split('_')[2]}{product_id.split('_')[5]}{product_id.split('_')[6]}"
-    folder_st = Path(measure_type) / tile_id[:2] / tile_id[2] / tile_id[3:] / year / date.split("T")[0]
+    folder_st = Path(measure_type) / tile_id[:2] / tile_id[2] / tile_id[3:] / year / prd_date.split("T")[0]
     dir_name = (
-        f"{platform}_{processing_level_folder}_{date}T235959_{unique_id}_{tile_id}"
+        f"{platform}_{processing_level_folder}_{prd_date}T235959_{unique_id}_{tile_id}"
     )
-    out_name = f"{platform}_{processing_level}_{date}T235959_{unique_id}_{tile_id}"
+    out_name = f"{platform}_{processing_level}_{prd_date}T235959_{unique_id}_{tile_id}"
     raster_fn = folder_st / dir_name / out_name
     if out_dir is not None:
         tmp = Path(out_dir) / folder_st / dir_name
         tmp.mkdir(parents=True, exist_ok=False)
     return raster_fn
 
-
-def get_tile_info(s2_tile_id: str):
+def get_tile_info(s2_tile_id: str)-> Tuple[str,Tuple[float, float, float, float]]:
     s2_tile = main(s2_tile_id)[0]
     s2_tile_srs = (s2_tile["SRS"].values)[0]
     logger.info("SRS of %s is %s", s2_tile_id, s2_tile_srs)
 
-    s2_tile_UL0 = list(s2_tile["UL0"])[0]
-    s2_tile_UL1 = list(s2_tile["UL1"])[0]
-    s2_tile_bb = (s2_tile_UL0, s2_tile_UL1 - 109800, s2_tile_UL0 + 109800, s2_tile_UL1)
+    s2_tile_ul0 = list(s2_tile["UL0"])[0]
+    s2_tile_ul1 = list(s2_tile["UL1"])[0]
+    s2_tile_bb = (s2_tile_ul0, s2_tile_ul1 - 109800, s2_tile_ul0 + 109800, s2_tile_ul1)
     logger.info("Bounding box of %s is %s", s2_tile_id, s2_tile_bb)
 
     return s2_tile_srs, s2_tile_bb
 
-
-def key_from_id(pid):
+def key_from_id(pid: str)->str:
     info = pid.split("_")
     date1 = info[3]
     date2 = info[4]
@@ -71,8 +69,7 @@ def key_from_id(pid):
     key = f"s3://usgs-landsat/collection02/level-2/standard/oli-tirs/{year}/{path}/{row}/LC08_L2SP_{path}{row}_{date1}_{date2}_02_T1/LC08_L2SP_{path}{row}_{date1}_{date2}_02_T1_ST_B10.TIF"
     return key
 
-
-def get_mask(sr_qa_pix):
+def get_mask(sr_qa_pix: Path)->None:
     with rasterio.open(sr_qa_pix, "r") as src:
         meta = src.meta.copy()
         meta["dtype"] = "uint8"
@@ -116,8 +113,7 @@ def get_mask(sr_qa_pix):
 
     logging.info("Binary cloud mask - Done")
 
-
-def rescale_array(array, factors):
+def rescale_array(array: NDArray[int], factors: Dict[str, float])->NDArray[int]:
     """
     Rescales an array and forces it to np.uint16 :
     Applies array * factors['a'] + factors['b']
@@ -125,16 +121,17 @@ def rescale_array(array, factors):
     :param factors: A dictionary containing the integer factors
     :return:
     """
-    if factors is None:
-        logger.error("factors are undefined")
-        raise ValueError
     logger.info("Rescaling Raster values")
     array = array * factors["a"] + factors["b"]
     array[array < 0] = 0
     return array.astype(np.uint16)
 
 
-def raster_to_ard(raster_path, band_num, raster_fn, prd_date, l8_ids, factors=None):
+def raster_to_ard(raster_path: Path,
+    band_num: str,
+    raster_fn: Path,
+    prd_date: date,
+    l8_ids: List[str])->None:
     """
     Read raster and update internals to fit ewoc ard specs
     :param raster_path: Path to raster file
@@ -144,6 +141,12 @@ def raster_to_ard(raster_path, band_num, raster_fn, prd_date, l8_ids, factors=No
     :param l8_ids: A list of s3 ids for Landsat-8 raster on the usgs-landsat bucket
     :param factors: dictionary of factors for a rescale of the raster values
     """
+    s2_scaling_factor = 10000
+    factors = {
+        "a": 0.0000275 * s2_scaling_factor,
+        "b": -0.2 * s2_scaling_factor,
+    }  # Scaling factors
+
     bands_sr = ["B2", "B3", "B4", "B5", "B6", "B7"]
     with rasterio.Env(GDAL_CACHEMAX=2048):
         with rasterio.open(raster_path, "r") as src:
@@ -177,12 +180,13 @@ def raster_to_ard(raster_path, band_num, raster_fn, prd_date, l8_ids, factors=No
         if processor_docker_version is None:
             out.update_tags(TIFFTAG_SOFTWARE='EWoC L8 Processor '+ str(__version__))
         else:
-            out.update_tags(TIFFTAG_SOFTWARE='EWoC L8 Processor '+ str(__version__) + ' / ' + processor_docker_version)
+            out.update_tags(TIFFTAG_SOFTWARE='EWoC L8 Processor '+ \
+                str(__version__) + ' / ' + processor_docker_version)
         out.update_tags(SOURCE_PRODUCTS=l8_ids)
 
         out.write(raster_array)
 
-def execute_cmd(cmd):
+def execute_cmd(cmd: str)->None:
     """
     Execute the given cmd.
     :param cmd: The command and its parameters to execute
@@ -195,6 +199,6 @@ def execute_cmd(cmd):
             shell=True,
             check=True)
     except subprocess.CalledProcessError as err:
-        logger.error(f'Following error code %s \
+        logger.error('Following error code %s \
             occurred while running command %s with following output:\
             %s / %s', err.returncode, err.cmd, err.stdout, err.stderr)
