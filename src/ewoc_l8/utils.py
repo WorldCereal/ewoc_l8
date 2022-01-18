@@ -1,13 +1,17 @@
+from datetime import datetime
 import json
 import logging
-import subprocess
+import os
 from pathlib import Path
+import subprocess
 from typing import Dict
-from nptyping import NDArray
 
 from eotile.eotile_module import main
+from nptyping import NDArray
 import numpy as np
 import rasterio
+
+from ewoc_l8 import __version__
 
 logger = logging.getLogger(__name__)
 
@@ -136,12 +140,14 @@ def rescale_array(array: NDArray[int], factors: Dict[str, float] = None):
     return array.astype(np.uint16)
 
 
-def raster_to_ard(raster_path: Path, band_num: str, raster_fn: Path, factors: Dict[str, float] = None):
+def raster_to_ard(raster_path: Path, band_num: str, raster_fn: Path, prd_date, l8_ids: List[str], factors: Dict[str, float] = None):
     """
     Read raster and update internals to fit ewoc ard specs
     :param raster_path: Path to raster file
     :param band_num: Band number, B02 for example
     :param raster_fn: Output raster path
+    :param date: Output raster date
+    :param l8_ids: A list of s3 ids for Landsat-8 raster on the usgs-landsat bucket
     :param factors: dictionary of factors for a rescale of the raster values
     """
     bands_sr = ["B2", "B3", "B4", "B5", "B6", "B7"]
@@ -169,6 +175,17 @@ def raster_to_ard(raster_path: Path, band_num: str, raster_fn: Path, factors: Di
         blockxsize=blocksize,
         blockysize=blocksize,
     ) as out:
+        # Modify output metadata
+        out.update_tags(ACQUISITION_DATETIME=prd_date.isoformat())
+        out.update_tags(TIFFTAG_DATETIME=str(datetime.now()))
+        out.update_tags(TIFFTAG_IMAGEDESCRIPTION='EWoC Landsat-8 ARD')
+        processor_docker_version = os.getenv('EWOC_L8_DOCKER_VERSION')
+        if processor_docker_version is None:
+            out.update_tags(TIFFTAG_SOFTWARE='EWoC L8 Processor '+ str(__version__))
+        else:
+            out.update_tags(TIFFTAG_SOFTWARE='EWoC L8 Processor '+ str(__version__) + ' / ' + processor_docker_version)
+        out.update_tags(SOURCE_PRODUCTS=l8_ids)
+
         out.write(raster_array)
 
 def execute_cmd(cmd: str):

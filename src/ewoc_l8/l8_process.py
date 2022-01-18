@@ -7,6 +7,8 @@ from typing import List, Tuple
 
 from ewoc_dag.bucket.aws import AWSS2L8C2Bucket
 from ewoc_dag.bucket.ewoc import EWOCARDBucket
+from ewoc_dag.eo_prd_id.l8_prd_id import L8C2PrdIdInfo
+
 from ewoc_l8.utils import (ard_from_key, get_mask, key_from_id,
                            raster_to_ard, get_tile_info, execute_cmd)
 
@@ -71,10 +73,10 @@ def process_group_band(
     ewoc_ard_bucket = EWOCARDBucket()
     for tr in tr_group:
         # tr = key_from_id(tr)
-        date, key = get_band_key(band_num, tr)
+        prd_date, key = get_band_key(band_num, tr)
         group_bands.append(tr)
 
-    tmp_folder = out_dir / 'tmp' / str(date) / str(band_num)
+    tmp_folder = out_dir / 'tmp' / str(prd_date) / str(band_num)
     src_folder = out_dir / 'tmp'
     tmp_folder.mkdir(parents=True, exist_ok=False)
     group_bands = list(set(group_bands))
@@ -130,6 +132,8 @@ def process_group_band(
                 raster_folder / "hrmn_L8_band.tif",
                 band_num,
                 raster_folder / "hrmn_L8_band_block.tif",
+                prd_date,
+            	tr_group,
             )
             if not no_upload:
                 ewoc_ard_bucket.upload_ard_raster(
@@ -142,6 +146,8 @@ def process_group_band(
                 band_num,
                 raster_folder / "hrmn_L8_band_block.tif",
                 factors,
+                prd_date,
+            	tr_group,
             )
             if not no_upload:
                 ewoc_ard_bucket.upload_ard_raster(
@@ -259,7 +265,7 @@ def process_group(
         print(logging_string)
 
 
-def get_band_key(band: str, tr: str):
+def get_band_key(band: str, prd_id: str):
     """
     Get the S3 band id from band name
     :param band: Band number B2/B3/B4/B5/B6/B7/B10/QA
@@ -270,20 +276,17 @@ def get_band_key(band: str, tr: str):
     qa_bands = ["QA_PIXEL_SR", "QA_PIXEL_TIR"]
     st_bands = ["B10"]
 
-    base = tr[:-11]
-    date = Path(tr).parts[-1].split("_")[3]
     key = None
-
     if band in st_bands:
-        key = f"{base}_ST_{band.upper()}.TIF"
+        key = f"{prd_id}_ST_{band.upper()}.TIF"
     elif band in sr_bands:
-        key = f"{base}_SR_{band.upper()}.TIF"
+        key = f"{prd_id}_SR_{band.upper()}.TIF"
     elif band in qa_bands:
-        key = f"{base}_QA_PIXEL.TIF"
+        key = f"{prd_id}_QA_PIXEL.TIF"
     else:
         ValueError("Band ID {band} not valid!")
 
-    return date, key
+    return L8C2PrdIdInfo(prd_id).acquisition_date, key
 
 
 if __name__ == "__main__":
