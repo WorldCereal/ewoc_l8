@@ -134,7 +134,7 @@ def rescale_array(array, factors):
     return array.astype(np.uint16)
 
 
-def raster_to_ard(raster_path, band_num, raster_fn, date, l8_ids, factors=None):
+def raster_to_ard(raster_path, band_num, raster_fn, prd_date, l8_ids, factors=None):
     """
     Read raster and update internals to fit ewoc ard specs
     :param raster_path: Path to raster file
@@ -170,7 +170,7 @@ def raster_to_ard(raster_path, band_num, raster_fn, date, l8_ids, factors=None):
         blockysize=blocksize,
     ) as out:
         # Modify output metadata
-        out.update_tags(ACQUISITION_DATETIME=date)
+        out.update_tags(ACQUISITION_DATETIME=prd_date.isoformat())
         out.update_tags(TIFFTAG_DATETIME=str(datetime.now()))
         out.update_tags(TIFFTAG_IMAGEDESCRIPTION='EWoC Landsat-8 ARD')
         processor_docker_version = os.getenv('EWOC_L8_DOCKER_VERSION')
@@ -179,7 +179,7 @@ def raster_to_ard(raster_path, band_num, raster_fn, date, l8_ids, factors=None):
         else:
             out.update_tags(TIFFTAG_SOFTWARE='EWoC L8 Processor '+ str(__version__) + ' / ' + processor_docker_version)
         out.update_tags(SOURCE_PRODUCTS=l8_ids)
-        
+
         out.write(raster_array)
 
 def execute_cmd(cmd):
