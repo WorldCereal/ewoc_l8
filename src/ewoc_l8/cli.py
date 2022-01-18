@@ -103,15 +103,15 @@ def run_id(
 # API allowing them to be called directly from the terminal as a CLI
 # executable/script.
 
-def parse_args(args: List[str])->argparse.Namespace:
+def parse_args(arguments: List[str])->argparse.Namespace:
     """Parse command line parameters
 
     Args:
-      args (List[str]): command line parameters as list of strings
+      arguments: command line parameters as list of strings
           (for example  ``["--help"]``).
 
     Returns:
-      :obj:`argparse.Namespace`: command line parameters namespace
+      :obj: command line parameters namespace
     """
     parser = argparse.ArgumentParser(
         description="Generate EWoC L8 ARD")
@@ -176,7 +176,7 @@ def parse_args(args: List[str])->argparse.Namespace:
         help="EWoC workplan in json format",
         type=Path)
 
-    args = parser.parse_args(args)
+    args = parser.parse_args(arguments)
 
     if args.subparser_name is None:
         parser.print_help()
@@ -187,24 +187,24 @@ def setup_logging(loglevel:int)->None:
     """Setup basic logging
 
     Args:
-      loglevel (int): minimum loglevel for emitting messages
+      loglevel: minimum loglevel for emitting messages
     """
     logformat = "[%(asctime)s] %(levelname)s:%(name)s:%(message)s"
     logging.basicConfig(
         level=loglevel, stream=sys.stdout, format=logformat, datefmt="%Y-%m-%d %H:%M:%S"
     )
 
-def main(args: List[str])->None:
+def main(arguments: List[str])->None:
     """Wrapper allowing :func:`generate_l8_ard` to be called with string arguments in a CLI fashion
 
     Instead of returning the value from :func:`fib`, it prints the result to the
     ``stdout`` in a nicely formatted message.
 
     Args:
-      args (List[str]): command line parameters as list of strings
+      arguments: command line parameters as list of strings
           (for example  ``["--verbose", "42"]``).
     """
-    args = parse_args(args)
+    args = parse_args(arguments)
     setup_logging(args.loglevel)
     _logger.debug(args)
 
