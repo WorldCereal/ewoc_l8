@@ -1,14 +1,14 @@
 import argparse
 from datetime import datetime
+import json
 import logging
 from pathlib import Path
-from tempfile import gettempdir
 import sys
+from tempfile import gettempdir
 from typing import List
 
 from ewoc_l8 import __version__
 from ewoc_l8.l8_process import process_group
-from ewoc_l8.utils import json_to_dict
 
 _logger = logging.getLogger(__name__)
 
@@ -36,9 +36,11 @@ def run_l8_plan(
     :param only_sr_mask: Process only SR masks, default to False
     :param only_tir: Process only TIR bands, default to False
     :param no_upload: If True the ard files are not uploaded to s3 bucket, default to False
-    :param debug: If True all the intermediate files and results will be kept locally, default to False
+    :param debug: If True all the intermediate files and results will be kept locally,
+         default to False
     """
-    plan = json_to_dict(plan_json)
+    with open(plan_json, encoding="utf8") as f_wp:
+        plan = json.load(f_wp)
 
     if production_id is None:
         _logger.warning("Use computed production id but we must used the one in wp")
@@ -79,7 +81,8 @@ def run_id(
     :param only_sr_mask: Process only SR masks, default to False
     :param only_tir: Process only TIR bands, default to False
     :param no_upload: If True the ard files are not uploaded to s3 bucket, default to False
-    :param debug: If True all the intermediate files and results will be kept locally, default to False
+    :param debug: If True all the intermediate files and results will be kept locally,
+         default to False
     """
 
 
@@ -228,7 +231,7 @@ def main(arguments: List[str])->None:
             no_upload=args.no_upload,
             debug=args.debug)
 
-def run():
+def run()->None:
     """Calls :func:`main` passing the CLI arguments extracted from :obj:`sys.argv`
 
     This function can be used as entry point to create console scripts with setuptools.

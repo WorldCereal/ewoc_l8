@@ -1,5 +1,4 @@
 from datetime import date, datetime
-import json
 import logging
 import os
 from pathlib import Path
@@ -15,11 +14,6 @@ from ewoc_l8 import __version__
 
 logger = logging.getLogger(__name__)
 
-
-def json_to_dict(path_to_json: str)->Dict:
-    with open(path_to_json, encoding="utf8") as f:
-        data = json.load(f)
-    return data
 
 def ard_from_key(
     key: str,
@@ -59,9 +53,9 @@ def get_tile_info(s2_tile_id: str)-> Tuple[str,Tuple[float, float, float, float]
     s2_tile_srs = (s2_tile["SRS"].values)[0]
     logger.info("SRS of %s is %s", s2_tile_id, s2_tile_srs)
 
-    s2_tile_UL0 = list(s2_tile["UL0"])[0]
-    s2_tile_UL1 = list(s2_tile["UL1"])[0]
-    s2_tile_bb = (s2_tile_UL0, s2_tile_UL1 - 109800, s2_tile_UL0 + 109800, s2_tile_UL1)
+    s2_tile_ul0 = list(s2_tile["UL0"])[0]
+    s2_tile_ul1 = list(s2_tile["UL1"])[0]
+    s2_tile_bb = (s2_tile_ul0, s2_tile_ul1 - 109800, s2_tile_ul0 + 109800, s2_tile_ul1)
     logger.info("Bounding box of %s is %s", s2_tile_id, s2_tile_bb)
 
     return s2_tile_srs, s2_tile_bb
@@ -186,7 +180,8 @@ def raster_to_ard(raster_path: Path,
         if processor_docker_version is None:
             out.update_tags(TIFFTAG_SOFTWARE='EWoC L8 Processor '+ str(__version__))
         else:
-            out.update_tags(TIFFTAG_SOFTWARE='EWoC L8 Processor '+ str(__version__) + ' / ' + processor_docker_version)
+            out.update_tags(TIFFTAG_SOFTWARE='EWoC L8 Processor '+ \
+                str(__version__) + ' / ' + processor_docker_version)
         out.update_tags(SOURCE_PRODUCTS=l8_ids)
 
         out.write(raster_array)
