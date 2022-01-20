@@ -6,8 +6,8 @@ import shutil
 from tempfile import gettempdir
 from typing import List, Optional, Tuple
 
-from ewoc_dag.bucket.aws import AWSS2L8C2Bucket
 from ewoc_dag.bucket.ewoc import EWOCARDBucket
+from ewoc_dag.landsat8 import get_l8c2l2_product
 from ewoc_dag.eo_prd_id.l8_prd_id import L8C2PrdIdInfo
 
 from ewoc_l8.utils import (ard_from_key, get_mask, key_from_id,
@@ -88,7 +88,8 @@ def process_group_band(
         else:
             key = band_num
 
-        AWSS2L8C2Bucket().download_prd(band, tmp_folder, prd_items=[key])
+        get_l8c2l2_product(band, out_root_dirpath=tmp_folder, prd_items=[key])
+
     try:
         logger.info("Starting Re-projection")
         for raster_file in os.listdir(raster_folder):
