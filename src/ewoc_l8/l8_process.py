@@ -80,6 +80,7 @@ def process_group_band(
     group_bands.sort()
     ref_name = key_from_id(group_bands[0])
 
+    vsi_gdal_paths=[]
     for band in group_bands:
         raster_folder = tmp_folder / band
         qa_bands = ["QA_PIXEL_SR", "QA_PIXEL_TIR"]
@@ -87,34 +88,43 @@ def process_group_band(
             key = "QA_PIXEL"
         else:
             key = band_num
+        
+        if band_num in ['B2', 'B3','B4','B5','B6','B7',]:
+            prd_item = 'SR_' + band_num
+        elif band_num == 'B10':
+            prd_item = 'ST_B10'
+        else:
+            prd_item = 'QA_PIXEL'
 
-        get_l8c2l2_product(band, out_root_dirpath=tmp_folder, prd_items=[key])
+        #get_l8c2l2_product(band, out_root_dirpath=tmp_folder, prd_items=[key])
+        from ewoc_dag.bucket.aws import AWSL8C2L2Bucket
+        vsi_gdal_paths.append(AWSL8C2L2Bucket().to_gdal_path(band, prd_item))
 
+    logger.info(vsi_gdal_paths)
     try:
         logger.info("Starting Re-projection")
-        for raster_file in os.listdir(raster_folder):
-            raster = raster_folder / raster_file
-            if res is not None:
-                cmd_proj = f"gdalwarp -tr {res} {res} -r {sr_method} -t_srs {t_srs} {raster} {raster.with_suffix('')}_r.tif {dst_nodata}"
-            else:
-                cmd_proj = (
-                    f"gdalwarp -t_srs {t_srs} {raster} {raster.with_suffix('')}_r.tif {dst_nodata}"
-                )
-        execute_cmd(cmd_proj)
+        raster_folder.mkdir()
+        for vsi_gdal_path in vsi_gdal_paths:
+            r_raster = raster_folder/vsi_gdal_path.split("/")[-1]
+            logger.info(r_raster)
+            cmd_proj = f"gdalwarp -of VRT --config AWS_REQUEST_PAYER requester --config AWS_REGION us-west-2 --config CPL_VSIL_CURL_ALLOWED_EXTENSIONS .tif --config GDAL_DISABLE_READDIR_ON_OPEN YES -tr {res} {res} -r {sr_method} -t_srs {t_srs} {vsi_gdal_path} {r_raster.with_suffix('')}.vrt {dst_nodata}"
+            logger.info(cmd_proj)
+            execute_cmd(cmd_proj)
+
         raster_list = " ".join(
             [
                 str(raster_folder / rst)
                 for rst in os.listdir(raster_folder)
-                if rst.endswith("_r.tif")
+                if rst.endswith(".vrt")
             ]
         )
 
         logger.info("Starting VRT creation")
-        cmd_vrt = f"gdalbuildvrt -q {raster_folder}/hrmn_L8_band.vrt {raster_list}"
+        cmd_vrt = f"gdalbuildvrt --config AWS_REQUEST_PAYER requester --config AWS_REGION us-west-2 --config CPL_VSIL_CURL_ALLOWED_EXTENSIONS .tif --config GDAL_DISABLE_READDIR_ON_OPEN YES -q {raster_folder}/hrmn_L8_band.vrt {raster_list}"
         execute_cmd(cmd_vrt)
 
         logger.info("Starting Clip to S2 extent")
-        cmd_clip = f"gdalwarp -te {bnds[0]} {bnds[1]} {bnds[2]} {bnds[3]} {raster_folder}/hrmn_L8_band.vrt {raster_folder}/hrmn_L8_band.tif "
+        cmd_clip = f"gdalwarp --config AWS_REQUEST_PAYER requester --config AWS_REGION us-west-2 --config CPL_VSIL_CURL_ALLOWED_EXTENSIONS .tif --config GDAL_DISABLE_READDIR_ON_OPEN YES -te {bnds[0]} {bnds[1]} {bnds[2]} {bnds[3]} {raster_folder}/hrmn_L8_band.vrt {raster_folder}/hrmn_L8_band.tif "
         execute_cmd(cmd_clip)
         upload_name = (
             str(ard_from_key(ref_name, band_num=band_num, s2_tile=s2_tile))
