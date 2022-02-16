@@ -123,7 +123,7 @@ def process_group_band(
             str(ard_from_key(ref_name, band_num=band_num, s2_tile=s2_tile))
             + f"_{band_num_alias}.tif"
         )
-        upload_path = "_".join([production_id, upload_name])
+        upload_path = "/".join([production_id, upload_name])
 
         logger.info("Converting to EWoC ARD")
         ewoc_ard_filepath = raster_folder / (s2_tile + '_ard.tif')
