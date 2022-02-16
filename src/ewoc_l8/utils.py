@@ -69,7 +69,7 @@ def key_from_id(pid: str)->str:
     key = f"s3://usgs-landsat/collection02/level-2/standard/oli-tirs/{year}/{path}/{row}/LC08_L2SP_{path}{row}_{date1}_{date2}_02_T1/LC08_L2SP_{path}{row}_{date1}_{date2}_02_T1_ST_B10.TIF"
     return key
 
-def get_mask(sr_qa_pix: Path)->None:
+def get_mask(sr_qa_pix: Path)->Path:
     with rasterio.open(sr_qa_pix, "r") as src:
         meta = src.meta.copy()
         meta["dtype"] = "uint8"
@@ -99,7 +99,8 @@ def get_mask(sr_qa_pix: Path)->None:
         cld_mask[clear] = 1
         cld_mask[nodata] = 255
 
-        raster_fn = sr_qa_pix
+        raster_fn = sr_qa_pix.with_suffix('.mask.tif')
+        logger.info(raster_fn)
         with rasterio.open(
             raster_fn,
             "w+",
@@ -112,6 +113,7 @@ def get_mask(sr_qa_pix: Path)->None:
             out.write(cld_mask.astype(rasterio.uint8), 1)
 
     logging.info("Binary cloud mask - Done")
+    return raster_fn
 
 def rescale_array(array: NDArray[int], factors: Dict[str, float])->NDArray[int]:
     """

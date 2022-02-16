@@ -1,13 +1,12 @@
 from datetime import date
 import logging
-import os
 from pathlib import Path
 import shutil
 from tempfile import gettempdir
 from typing import List, Optional, Tuple
 
 from ewoc_dag.bucket.ewoc import EWOCARDBucket
-from ewoc_dag.landsat8 import get_l8c2l2_product
+from ewoc_dag.l8c2l2_dag import get_l8c2l2_gdal_path
 from ewoc_dag.eo_prd_id.l8_prd_id import L8C2PrdIdInfo
 
 from ewoc_l8.utils import (ard_from_key, get_mask, key_from_id,
@@ -70,7 +69,7 @@ def process_group_band(
     group_bands = []
     ewoc_ard_bucket = EWOCARDBucket()
     for prd_id in tr_group:
-        prd_date, key = get_band_key(band_num, prd_id)
+        prd_date, __unused = get_band_key(band_num, prd_id)
         group_bands.append(prd_id)
 
     tmp_folder = out_dir / 'tmp' / str(prd_date) / str(band_num)
@@ -80,42 +79,46 @@ def process_group_band(
     group_bands.sort()
     ref_name = key_from_id(group_bands[0])
 
+    vsi_gdal_paths=[]
     for band in group_bands:
         raster_folder = tmp_folder / band
-        qa_bands = ["QA_PIXEL_SR", "QA_PIXEL_TIR"]
-        if band_num in qa_bands:
-            key = "QA_PIXEL"
+
+        if band_num in ['B2', 'B3','B4','B5','B6','B7',]:
+            prd_item = 'SR_' + band_num
+        elif band_num == 'B10':
+            prd_item = 'ST_B10'
         else:
-            key = band_num
+            prd_item = 'QA_PIXEL'
 
-        get_l8c2l2_product(band, out_root_dirpath=tmp_folder, prd_items=[key])
+        vsi_gdal_paths.append(get_l8c2l2_gdal_path(band, prd_item))
 
+    logger.info(vsi_gdal_paths)
+    config_options = ["--config AWS_REQUEST_PAYER requester",
+                      "--config AWS_REGION us-west-2",
+                      "--config CPL_VSIL_CURL_ALLOWED_EXTENSIONS .tif",
+                      "--config GDAL_DISABLE_READDIR_ON_OPEN YES"]
     try:
         logger.info("Starting Re-projection")
-        for raster_file in os.listdir(raster_folder):
-            raster = raster_folder / raster_file
-            if res is not None:
-                cmd_proj = f"gdalwarp -tr {res} {res} -r {sr_method} -t_srs {t_srs} {raster} {raster.with_suffix('')}_r.tif {dst_nodata}"
-            else:
-                cmd_proj = (
-                    f"gdalwarp -t_srs {t_srs} {raster} {raster.with_suffix('')}_r.tif {dst_nodata}"
-                )
-        execute_cmd(cmd_proj)
-        raster_list = " ".join(
-            [
-                str(raster_folder / rst)
-                for rst in os.listdir(raster_folder)
-                if rst.endswith("_r.tif")
-            ]
-        )
+        raster_folder.mkdir()
+        raster_list=[]
+        for vsi_gdal_path in vsi_gdal_paths:
+            r_raster = (raster_folder/vsi_gdal_path.split("/")[-1]).with_suffix('.vrt')
+            logger.info(r_raster)
+            cmd_proj = f"gdalwarp -of VRT {' '.join(config_options)} -tr {res} {res} -r {sr_method} -t_srs {t_srs} {vsi_gdal_path} {r_raster} {dst_nodata}"
+            logger.info(cmd_proj)
+            execute_cmd(cmd_proj)
+            raster_list.append(str(r_raster))
 
         logger.info("Starting VRT creation")
-        cmd_vrt = f"gdalbuildvrt -q {raster_folder}/hrmn_L8_band.vrt {raster_list}"
+        merge_raster_filepath = raster_folder/'merge_l8.vrt'
+        cmd_vrt = f"gdalbuildvrt {' '.join(config_options)} -q {merge_raster_filepath} {' '.join(raster_list)}"
         execute_cmd(cmd_vrt)
 
         logger.info("Starting Clip to S2 extent")
-        cmd_clip = f"gdalwarp -te {bnds[0]} {bnds[1]} {bnds[2]} {bnds[3]} {raster_folder}/hrmn_L8_band.vrt {raster_folder}/hrmn_L8_band.tif "
+        tiled_raster_filepath = raster_folder/'tiled_l8.tif'
+        cmd_clip = f"gdalwarp {' '.join(config_options)} -te {bnds[0]} {bnds[1]} {bnds[2]} {bnds[3]} {merge_raster_filepath} {tiled_raster_filepath}"
         execute_cmd(cmd_clip)
+
         upload_name = (
             str(ard_from_key(ref_name, band_num=band_num, s2_tile=s2_tile))
             + f"_{band_num_alias}.tif"
@@ -123,34 +126,29 @@ def process_group_band(
         upload_path = "_".join([production_id, upload_name])
 
         logger.info("Converting to EWoC ARD")
-        if "QA_PIXEL" in band_num:
-            if "SR" in band_num:
-                get_mask(raster_folder / "hrmn_L8_band.tif")
+        ewoc_ard_filepath = raster_folder / (s2_tile + '_ard.tif')
+        if "QA_PIXEL" in band_num and "SR" in band_num:
             raster_to_ard(
-                raster_folder / "hrmn_L8_band.tif",
+                get_mask(tiled_raster_filepath),
                 band_num,
-                raster_folder / "hrmn_L8_band_block.tif",
+                ewoc_ard_filepath,
                 prd_date,
             	tr_group,
             )
-            if not no_upload:
-                ewoc_ard_bucket.upload_ard_raster(
-                    raster_folder / "hrmn_L8_band_block.tif", upload_path
-                )
-            up_file_size = (raster_folder / "hrmn_L8_band_block.tif").stat().st_size
         else:
             raster_to_ard(
-                raster_folder / "hrmn_L8_band.tif",
+                tiled_raster_filepath,
                 band_num,
-                raster_folder / "hrmn_L8_band_block.tif",
+                ewoc_ard_filepath,
                 prd_date,
             	tr_group,
             )
-            if not no_upload:
-                ewoc_ard_bucket.upload_ard_raster(
-                    raster_folder / "hrmn_L8_band_block.tif", upload_path
-                )
-            up_file_size = (raster_folder / "hrmn_L8_band_block.tif").stat().st_size
+
+        if not no_upload:
+            up_file_size= ewoc_ard_bucket.upload_ard_raster(
+                ewoc_ard_filepath, upload_path
+            )
+
         return 1, up_file_size, upload_path, ewoc_ard_bucket.bucket_name
     except BaseException as err:
         logger.info("Failed for group\n")
