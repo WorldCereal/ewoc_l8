@@ -7,7 +7,7 @@ from tempfile import gettempdir
 from typing import List, Optional, Tuple
 
 from ewoc_dag.bucket.ewoc import EWOCARDBucket
-from ewoc_dag.landsat8 import get_l8c2l2_product
+from ewoc_dag.l8c2l2_dag import get_l8c2l2_gdal_path
 from ewoc_dag.eo_prd_id.l8_prd_id import L8C2PrdIdInfo
 
 from ewoc_l8.utils import (ard_from_key, get_mask, key_from_id,
@@ -96,9 +96,7 @@ def process_group_band(
         else:
             prd_item = 'QA_PIXEL'
 
-        #get_l8c2l2_product(band, out_root_dirpath=tmp_folder, prd_items=[key])
-        from ewoc_dag.bucket.aws import AWSL8C2L2Bucket
-        vsi_gdal_paths.append(AWSL8C2L2Bucket().to_gdal_path(band, prd_item))
+        vsi_gdal_paths.append(get_l8c2l2_gdal_path(band, prd_item))
 
     logger.info(vsi_gdal_paths)
     try:
