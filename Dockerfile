@@ -49,7 +49,7 @@ RUN python3 -m pip install --no-cache-dir --upgrade pip \
     && python3 -m pip install --no-cache-dir virtualenv 
 
 # Install python packages
-ARG EWOC_DAG_VERSION=0.6.1
+ARG EWOC_DAG_VERSION=0.7.0
 LABEL EWOC_DAG_VERSION="${EWOC_DAG_VERSION}"
 
 # Copy private python packages
