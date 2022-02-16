@@ -1,6 +1,5 @@
 from datetime import date
 import logging
-import os
 from pathlib import Path
 import shutil
 from tempfile import gettempdir
@@ -88,7 +87,7 @@ def process_group_band(
             key = "QA_PIXEL"
         else:
             key = band_num
-        
+
         if band_num in ['B2', 'B3','B4','B5','B6','B7',]:
             prd_item = 'SR_' + band_num
         elif band_num == 'B10':
@@ -99,31 +98,32 @@ def process_group_band(
         vsi_gdal_paths.append(get_l8c2l2_gdal_path(band, prd_item))
 
     logger.info(vsi_gdal_paths)
+    config_options = ["--config AWS_REQUEST_PAYER requester",
+                      "--config AWS_REGION us-west-2",
+                      "--config CPL_VSIL_CURL_ALLOWED_EXTENSIONS .tif",
+                      "--config GDAL_DISABLE_READDIR_ON_OPEN YES"]
     try:
         logger.info("Starting Re-projection")
         raster_folder.mkdir()
+        raster_list=[]
         for vsi_gdal_path in vsi_gdal_paths:
-            r_raster = raster_folder/vsi_gdal_path.split("/")[-1]
+            r_raster = (raster_folder/vsi_gdal_path.split("/")[-1]).with_suffix('.vrt')
             logger.info(r_raster)
-            cmd_proj = f"gdalwarp -of VRT --config AWS_REQUEST_PAYER requester --config AWS_REGION us-west-2 --config CPL_VSIL_CURL_ALLOWED_EXTENSIONS .tif --config GDAL_DISABLE_READDIR_ON_OPEN YES -tr {res} {res} -r {sr_method} -t_srs {t_srs} {vsi_gdal_path} {r_raster.with_suffix('')}.vrt {dst_nodata}"
+            cmd_proj = f"gdalwarp -of VRT {' '.join(config_options)} -tr {res} {res} -r {sr_method} -t_srs {t_srs} {vsi_gdal_path} {r_raster} {dst_nodata}"
             logger.info(cmd_proj)
             execute_cmd(cmd_proj)
+            raster_list.append(str(r_raster))
 
-        raster_list = " ".join(
-            [
-                str(raster_folder / rst)
-                for rst in os.listdir(raster_folder)
-                if rst.endswith(".vrt")
-            ]
-        )
+        print(raster_list)
 
         logger.info("Starting VRT creation")
-        cmd_vrt = f"gdalbuildvrt --config AWS_REQUEST_PAYER requester --config AWS_REGION us-west-2 --config CPL_VSIL_CURL_ALLOWED_EXTENSIONS .tif --config GDAL_DISABLE_READDIR_ON_OPEN YES -q {raster_folder}/hrmn_L8_band.vrt {raster_list}"
+        cmd_vrt = f"gdalbuildvrt {' '.join(config_options)} -q {raster_folder}/hrmn_L8_band.vrt {' '.join(raster_list)}"
         execute_cmd(cmd_vrt)
 
         logger.info("Starting Clip to S2 extent")
-        cmd_clip = f"gdalwarp --config AWS_REQUEST_PAYER requester --config AWS_REGION us-west-2 --config CPL_VSIL_CURL_ALLOWED_EXTENSIONS .tif --config GDAL_DISABLE_READDIR_ON_OPEN YES -te {bnds[0]} {bnds[1]} {bnds[2]} {bnds[3]} {raster_folder}/hrmn_L8_band.vrt {raster_folder}/hrmn_L8_band.tif "
+        cmd_clip = f"gdalwarp {' '.join(config_options)} -te {bnds[0]} {bnds[1]} {bnds[2]} {bnds[3]} {raster_folder}/hrmn_L8_band.vrt {raster_folder}/hrmn_L8_band.tif "
         execute_cmd(cmd_clip)
+
         upload_name = (
             str(ard_from_key(ref_name, band_num=band_num, s2_tile=s2_tile))
             + f"_{band_num_alias}.tif"
