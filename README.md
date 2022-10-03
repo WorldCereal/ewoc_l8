@@ -65,5 +65,5 @@ ewoc_generate_l8_ard --only-sr-mask prd_ids 31TCJ LC08_L2SP_199029_20211216_2021
 You can use the docker image to run this processor as described in this simple example:
 
 ```bash
-sudo docker run -ti --rm --env-file env.dev ewoc_generate_l8_ard --only-tir prd_ids 31TCJ LC08_L2SP_199029_20211216_20211223_02_T1 LC08_L2SP_199030_20211216_20211223_02_T1
+sudo docker run -ti --rm --env-file env.dev <docker_image_id> ewoc_generate_l8_ard -v --only-tir --prod-id c728b264-5c97-4f4c-81fe-1500d4c4dfbd_7091_20220916010500 prd_ids 31TCJ LC08_L2SP_199029_20211216_20211223_02_T1 LC08_L2SP_199030_20211216_20211223_02_T1
 ```
