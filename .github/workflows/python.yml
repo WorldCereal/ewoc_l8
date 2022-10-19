@@ -13,25 +13,25 @@ jobs:
     runs-on: ubuntu-20.04
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: '3.8'
   
     - name: Download ewoc_dag
-      uses: robinraju/release-downloader@v1.1
+      uses: robinraju/release-downloader@v1.5
       with:
         repository: "WorldCereal/ewoc_dataship"
-        tag: "0.7.0"
-        fileName: "ewoc_dag-0.7.0.tar.gz"
+        tag: "0.8.4"
+        fileName: "ewoc_dag-0.8.4.tar.gz"
         token: ${{ secrets.CS_ORG_TOKEN }}
 
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install ewoc_dag-0.7.0.tar.gz
+        pip install ewoc_dag-0.8.4.tar.gz
         pip install "eotile<0.3"
         pip install "numpy<2"
         pip install nptyping
@@ -50,7 +50,7 @@ jobs:
       run: python -m build
 
     - name: Upload Artifact
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: distribution
         path: ./dist
@@ -64,7 +64,7 @@ jobs:
     steps:
 
     - name: Download Artifact
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v3
       with:
         name: distribution
         path: ./dist
