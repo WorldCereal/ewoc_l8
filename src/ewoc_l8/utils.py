@@ -6,7 +6,8 @@ import subprocess
 from typing import Dict, List, Tuple
 
 from eotile.eotile_module import main
-from nptyping import NDArray
+# from nptyping import NDArray
+import numpy.typing as npt
 import numpy as np
 import rasterio
 
@@ -115,7 +116,7 @@ def get_mask(sr_qa_pix: Path)->Path:
     logging.info("Binary cloud mask - Done")
     return raster_fn
 
-def rescale_array(array: NDArray[int], factors: Dict[str, float])->NDArray[int]:
+def rescale_array(array: npt.NDArray[int], factors: Dict[str, float])->npt.NDArray[int]:
     """
     Rescales an array and forces it to np.uint16 :
     Applies array * factors['a'] + factors['b']
