@@ -62,7 +62,8 @@ RUN python3 -m virtualenv ${EWOC_L8_VENV} \
     && source ${EWOC_L8_VENV}/bin/activate \
     && pip install --no-cache-dir /tmp/ewoc_dag-${EWOC_DAG_VERSION}.tar.gz \
     && pip install --no-cache-dir . \
-    && pip install --no-cache-dir psycopg2-binary
+    && pip install --no-cache-dir psycopg2-binary \
+    && pip install --no-cache-dir rfc5424-logging-handler
 # Last package useful for AGU script
 
 ADD entrypoint.sh /opt
