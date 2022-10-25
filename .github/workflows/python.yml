@@ -34,7 +34,7 @@ jobs:
         pip install ewoc_dag-0.8.4.tar.gz
         pip install "eotile<0.3"
         pip install "numpy<2"
-        pip install nptyping
+        pip install "nptyping<2"
         pip install "rasterio<2"
         pip install build
         pip install pylint
