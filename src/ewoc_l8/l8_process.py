@@ -1,4 +1,3 @@
-import boto3
 from datetime import date
 import logging
 from pathlib import Path
@@ -6,6 +5,7 @@ import shutil
 from tempfile import gettempdir
 from typing import List, Optional, Tuple
 
+import boto3
 from ewoc_dag.bucket.ewoc import EWOCARDBucket
 from ewoc_dag.l8c2l2_dag import get_l8c2l2_gdal_path
 from ewoc_dag.eo_prd_id.l8_prd_id import L8C2PrdIdInfo
@@ -116,19 +116,17 @@ def process_group_band(
                       "--config CPL_VSIL_CURL_ALLOWED_EXTENSIONS .tif",
                       "--config GDAL_DISABLE_READDIR_ON_OPEN YES"]
 
-    logger.info("Checking bucket")
-    try:
-        for vsi_gdal_path in vsi_gdal_paths:
-            s3_result = boto3.client("s3").list_objects_v2(
-            Bucket='usgs-landsat',
-            Prefix=vsi_gdal_path[20:],
-            Delimiter = "/",
-            RequestPayer="requester"
-            )
-            s3_result['Contents']
-    except KeyError:
-        logger.error("Band %s does not exist !", vsi_gdal_path.split('/')[-1])
-        raise L8InputProcessorError(tr_group)
+    logger.info("Checking needed L8 bands in the product prefix")
+    for vsi_gdal_path in vsi_gdal_paths:
+        s3_result = boto3.client("s3").list_objects_v2(
+        Bucket='usgs-landsat',
+        Prefix=vsi_gdal_path[20:],
+        Delimiter = "/",
+        RequestPayer="requester"
+        )
+        if s3_result.get('Contents') is None:
+            logger.error("Band %s does not exist !", vsi_gdal_path.split('/')[-1])
+            raise L8InputProcessorError(tr_group)
 
     try:
         logger.info("Starting Re-projection")

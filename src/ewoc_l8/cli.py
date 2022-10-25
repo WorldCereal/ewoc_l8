@@ -116,7 +116,7 @@ def run_id(
         )
     except L8ARDProcessorBaseError as exc:
         _logger.error(exc)
-        raise L8ARDProcessorError(s2_tile, pid_group, exc.exit_code)
+        raise L8ARDProcessorError(s2_tile, pid_group, exc.exit_code) from exc
 
 # ---- CLI ----
 # The functions defined in this section are wrappers around the main Python
