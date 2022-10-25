@@ -8,9 +8,22 @@ from tempfile import gettempdir
 from typing import List
 
 from ewoc_l8 import __version__
-from ewoc_l8.l8_process import process_group
+from ewoc_l8.l8_process import L8ARDProcessorBaseError, process_group
 
 _logger = logging.getLogger(__name__)
+
+class L8ARDProcessorError(Exception):
+    """Exception raised for errors in the L8 ARD generation."""
+
+    def __init__(self, s2_tile_id, l8c2l2_prd_ids, exit_code):
+        self._s2_tile_id = s2_tile_id
+        self._l8c2l2_prd_ids = l8c2l2_prd_ids
+        self.exit_code = exit_code
+        self._message = "Error during L8 ARD generation:"
+        super().__init__(self._message)
+
+    def __str__(self):
+        return f"{self._message} No L8 ARD on {self._s2_tile_id} for {self._l8c2l2_prd_ids} !"
 
 # ---- API ----
 
@@ -89,17 +102,21 @@ def run_id(
     if production_id is None:
         production_id=_get_default_prod_id()
 
-    process_group(
-        pid_group,
-        production_id,
-        s2_tile,
-        out_dir,
-        only_sr=only_sr,
-        only_sr_mask=only_sr_mask,
-        only_tir=only_tir,
-        no_upload=no_upload,
-        debug=debug,
-    )
+    try:
+        process_group(
+            pid_group,
+            production_id,
+            s2_tile,
+            out_dir,
+            only_sr=only_sr,
+            only_sr_mask=only_sr_mask,
+            only_tir=only_tir,
+            no_upload=no_upload,
+            debug=debug,
+        )
+    except L8ARDProcessorBaseError as exc:
+        _logger.error(exc)
+        raise L8ARDProcessorError(s2_tile, pid_group, exc.exit_code) from exc
 
 # ---- CLI ----
 # The functions defined in this section are wrappers around the main Python
@@ -212,16 +229,31 @@ def main(arguments: List[str])->None:
     _logger.debug(args)
 
     if args.subparser_name == "prd_ids":
-        run_id(args.l8c2l2_prd_ids,
-            args.s2_tile_id,
-            args.out_dirpath,
-            args.prod_id,
-            only_sr=args.only_sr,
-            only_sr_mask=args.only_sr_mask,
-            only_tir=args.only_tir,
-            no_upload=args.no_upload,
-            debug=args.debug)
+
+        _logger.debug("Starting Generate L8 ARD for %s over %s MGRS Tile ...",
+            args.l8c2l2_prd_ids, args.s2_tile_id)
+
+        try:
+            run_id(args.l8c2l2_prd_ids,
+                args.s2_tile_id,
+                args.out_dirpath,
+                args.prod_id,
+                only_sr=args.only_sr,
+                only_sr_mask=args.only_sr_mask,
+                only_tir=args.only_tir,
+                no_upload=args.no_upload,
+                debug=args.debug)
+        except L8ARDProcessorError as exc:
+            _logger.critical(exc)
+            sys.exit(exc.exit_code)
+        else:
+            _logger.info("Generation of L8 ARD for %s over %s MGRS Tile is ended!",
+                args.l8c2l2_prd_ids, args.s2_tile_id)
+
     elif args.subparser_name == "wp":
+
+        _logger.debug("Starting Generate L8 ARD for the workplan %s ...", args.wp)
+
         run_l8_plan(args.wp,
             args.out_dirpath,
             args.prod_id,
@@ -230,6 +262,8 @@ def main(arguments: List[str])->None:
             only_tir=args.only_tir,
             no_upload=args.no_upload,
             debug=args.debug)
+
+        _logger.info("Generation of the EWoC workplan %s for L8 part is ended!", args.wp)
 
 def run()->None:
     """Calls :func:`main` passing the CLI arguments extracted from :obj:`sys.argv`

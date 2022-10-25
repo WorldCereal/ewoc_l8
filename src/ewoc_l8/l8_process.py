@@ -5,15 +5,33 @@ import shutil
 from tempfile import gettempdir
 from typing import List, Optional, Tuple
 
+import boto3
 from ewoc_dag.bucket.ewoc import EWOCARDBucket
 from ewoc_dag.l8c2l2_dag import get_l8c2l2_gdal_path
 from ewoc_dag.eo_prd_id.l8_prd_id import L8C2PrdIdInfo
 
+from ewoc_l8 import EWOC_L8_INPUT_DOWNLOAD_ERROR
 from ewoc_l8.utils import (ard_from_key, get_mask, key_from_id,
                            raster_to_ard, get_tile_info, execute_cmd)
 
 logger = logging.getLogger(__name__)
 
+class L8ARDProcessorBaseError(Exception):
+    """ Base Error"""
+    def __init__(self, exit_code, l8_prd_ids):
+        self._message = "Error during L8 ARD generation:"
+        self.exit_code = exit_code
+        self._l8_prd_ids = l8_prd_ids
+        super().__init__(self._message)
+
+class L8InputProcessorError(L8ARDProcessorBaseError):
+    """Exception raised for errors in the L8 ARD generation at input download step."""
+
+    def __init__(self, prd_ids):
+        super().__init__(EWOC_L8_INPUT_DOWNLOAD_ERROR, prd_ids)
+
+    def __str__(self):
+        return f"{self._message} {self._l8_prd_ids} not download !"
 
 def process_group_band(
     band_num: str,
@@ -97,6 +115,19 @@ def process_group_band(
                       "--config AWS_REGION us-west-2",
                       "--config CPL_VSIL_CURL_ALLOWED_EXTENSIONS .tif",
                       "--config GDAL_DISABLE_READDIR_ON_OPEN YES"]
+
+    logger.info("Checking needed L8 bands in the product prefix")
+    for vsi_gdal_path in vsi_gdal_paths:
+        s3_result = boto3.client("s3").list_objects_v2(
+        Bucket='usgs-landsat',
+        Prefix=vsi_gdal_path[20:],
+        Delimiter = "/",
+        RequestPayer="requester"
+        )
+        if s3_result.get('Contents') is None:
+            logger.error("Band %s does not exist !", vsi_gdal_path.split('/')[-1])
+            raise L8InputProcessorError(tr_group)
+
     try:
         logger.info("Starting Re-projection")
         raster_folder.mkdir()
