@@ -126,6 +126,8 @@ def process_group_band(
         )
         if s3_result.get('Contents') is None:
             logger.error("Band %s does not exist !", vsi_gdal_path.split('/')[-1])
+            if not debug:
+                shutil.rmtree(src_folder)
             raise L8InputProcessorError(tr_group)
 
     try:
