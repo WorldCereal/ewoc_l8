@@ -33,7 +33,7 @@ class L8InputProcessorError(L8ARDProcessorBaseError):
     def __str__(self):
         return f"{self._message} {self._l8_prd_ids} not download !"
 
-def process_group_band(
+def generate_l8_band_ard(
     band_num: str,
     tr_group: List[str],
     production_id: str,
@@ -192,7 +192,7 @@ def process_group_band(
         if not debug:
             shutil.rmtree(src_folder)
 
-def process_group(
+def generate_l8_ard(
     tr_group: List[str],
     production_id: str,
     s2_tile: str,
@@ -258,7 +258,7 @@ def process_group(
 
     for band in process_bands:
         logger.info("Processing %s band", band)
-        up_count, up_size, upload_path, bucket_name = process_group_band(
+        up_count, up_size, upload_path, bucket_name = generate_l8_band_ard(
             band,
             tr_group,
             production_id,
@@ -323,7 +323,7 @@ if __name__ == "__main__":
 
     _S2_TILE_ID = "30SVG"
 
-    process_group(
+    generate_l8_ard(
         ["LC08_L1TP_201035_20191022_20200825_02_T1",
         "LC08_L1TP_201034_20191022_20200825_02_T1"],
         _S2_TILE_ID,

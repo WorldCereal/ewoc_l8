@@ -8,7 +8,7 @@ from tempfile import gettempdir
 from typing import List
 
 from ewoc_l8 import __version__
-from ewoc_l8.l8_process import L8ARDProcessorBaseError, process_group
+from ewoc_l8.l8_process import L8ARDProcessorBaseError, generate_l8_ard
 
 _logger = logging.getLogger(__name__)
 
@@ -62,7 +62,7 @@ def run_l8_plan(
     for s2_tile in plan:
         l8_tirs = plan[s2_tile]["L8_TIRS"]
         for tr_group in l8_tirs:
-            process_group(
+            generate_l8_ard(
                 tr_group,
                 production_id,
                 s2_tile,
@@ -74,7 +74,7 @@ def run_l8_plan(
                 debug=debug,
             )
 
-def run_id(
+def generate_l8_ard_from_pids(
     pid_group: List[str],
     s2_tile: str,
     out_dir: Path,
@@ -103,7 +103,7 @@ def run_id(
         production_id=_get_default_prod_id()
 
     try:
-        process_group(
+        generate_l8_ard(
             pid_group,
             production_id,
             s2_tile,
@@ -234,7 +234,7 @@ def main(arguments: List[str])->None:
             args.l8c2l2_prd_ids, args.s2_tile_id)
 
         try:
-            run_id(args.l8c2l2_prd_ids,
+            generate_l8_ard_from_pids(args.l8c2l2_prd_ids,
                 args.s2_tile_id,
                 args.out_dirpath,
                 args.prod_id,
