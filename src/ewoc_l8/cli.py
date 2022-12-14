@@ -1,6 +1,5 @@
 import argparse
 from datetime import datetime
-import json
 import logging
 from pathlib import Path
 import sys
@@ -92,10 +91,10 @@ def parse_args(arguments: List[str])->argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Generate EWoC L8 ARD")
     parser.add_argument(dest="s2_tile_id",
-        help="Sentinel-2 Tile ID", 
+        help="Sentinel-2 Tile ID",
         type=str)
     parser.add_argument(dest="l8c2l2_prd_ids",
-        help="Landsat8 C2 L2 Product ids", 
+        help="Landsat8 C2 L2 Product ids",
         nargs='*')
     parser.add_argument(
         "--version",
