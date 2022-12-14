@@ -35,7 +35,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        python -m pip install ewoc_dag-0.8.6.tar.gz
+        python -m pip install ewoc_dag-${{ env.EWOC_DAG_VERSION }}.tar.gz
         python -m pip install "eotile<0.3"
         python -m pip install "numpy<2"
         python -m pip install "rasterio<2"
