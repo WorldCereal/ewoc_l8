@@ -3,7 +3,7 @@ import logging
 import os
 from pathlib import Path
 import subprocess
-from typing import Dict, List, Tuple
+from typing import Optional, Dict, List, Tuple
 
 from eotile.eotile_module import main
 from nptyping import NDArray
@@ -19,7 +19,7 @@ def ard_from_key(
     key: str,
     s2_tile: str,
     band_num: str,
-    out_dir: Path = None)->Path:
+    out_dir: Optional[Path] = None)->Path:
     sr_bands = ["B2", "B3", "B4", "B5", "B6", "B7", "QA_PIXEL_SR"]
     st_bands = ["B10", "QA_PIXEL_TIR"]
     if band_num in sr_bands:
