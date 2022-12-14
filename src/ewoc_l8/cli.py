@@ -1,6 +1,7 @@
+""" CLI to download and process LANDSAT-8 data identify by their product ID.
+"""
 import argparse
 from datetime import datetime
-import json
 import logging
 from pathlib import Path
 import sys
@@ -31,49 +32,6 @@ def _get_default_prod_id()->str:
     str_now=datetime.now().strftime("%Y%m%dT%H%M%S")
     return f"0000_000_{str_now}"
 
-def run_l8_plan(
-    plan_json: str,
-    out_dir: Path,
-    production_id: str,
-    only_sr: bool = False,
-    only_sr_mask: bool = False,
-    only_tir: bool = False,
-    no_upload: bool = False,
-    debug: bool = False)->None:
-    """
-    Run the Landsat-8 processer over a json plan
-    :param plan_json: EWoC WorkPlan in json format
-    :param out_dir: Output directory
-    :param production_id: Production ID that will be used to upload to s3 bucket
-    :param only_sr: Process only SR bands, default to False
-    :param only_sr_mask: Process only SR masks, default to False
-    :param only_tir: Process only TIR bands, default to False
-    :param no_upload: If True the ard files are not uploaded to s3 bucket, default to False
-    :param debug: If True all the intermediate files and results will be kept locally,
-         default to False
-    """
-    with open(plan_json, encoding="utf8") as f_wp:
-        plan = json.load(f_wp)
-
-    if production_id is None:
-        _logger.warning("Use computed production id but we must used the one in wp")
-        production_id = _get_default_prod_id()
-
-    for s2_tile in plan:
-        l8_tirs = plan[s2_tile]["L8_TIRS"]
-        for tr_group in l8_tirs:
-            upload_count, path_list = generate_l8_ard(
-                tr_group,
-                production_id,
-                s2_tile,
-                out_dir,
-                only_sr=only_sr,
-                only_sr_mask=only_sr_mask,
-                only_tir=only_tir,
-                no_upload=no_upload,
-                debug=debug,
-            )
-
 def generate_l8_ard_from_pids(
     pid_group: List[str],
     s2_tile: str,
@@ -97,7 +55,6 @@ def generate_l8_ard_from_pids(
     :param debug: If True all the intermediate files and results will be kept locally,
          default to False
     """
-
 
     if production_id is None:
         production_id=_get_default_prod_id()
@@ -135,6 +92,12 @@ def parse_args(arguments: List[str])->argparse.Namespace:
     """
     parser = argparse.ArgumentParser(
         description="Generate EWoC L8 ARD")
+    parser.add_argument(dest="s2_tile_id",
+        help="Sentinel-2 Tile ID",
+        type=str)
+    parser.add_argument(dest="l8c2l2_prd_ids",
+        help="Landsat8 C2 L2 Product ids",
+        nargs='*')
     parser.add_argument(
         "--version",
         action="version",
@@ -182,24 +145,7 @@ def parse_args(arguments: List[str])->argparse.Namespace:
         const=logging.DEBUG,
     )
 
-    subparsers = parser.add_subparsers(dest='subparser_name')
-
-    parser_prd_ids = subparsers.add_parser('prd_ids',
-        help='Generate EWoC L8 ARD from L8 C2 L2 product IDs')
-    parser_prd_ids.add_argument(dest="s2_tile_id",
-        help="Sentinel-2 Tile ID", type=str)
-    parser_prd_ids.add_argument(dest="l8c2l2_prd_ids",
-        help="Landsat8 C2 L2 Product ids", nargs='*')
-
-    parser_wp = subparsers.add_parser('wp', help='Generate EWoC L8 ARD from EWoC workplan')
-    parser_wp.add_argument(dest="wp",
-        help="EWoC workplan in json format",
-        type=Path)
-
     args = parser.parse_args(arguments)
-
-    if args.subparser_name is None:
-        parser.print_help()
 
     return args
 
@@ -228,33 +174,12 @@ def main(arguments: List[str])->None:
     setup_logging(args.loglevel)
     _logger.debug(args)
 
-    if args.subparser_name == "prd_ids":
+    _logger.debug("Starting Generate L8 ARD for %s over %s MGRS Tile ...",
+        args.l8c2l2_prd_ids, args.s2_tile_id)
 
-        _logger.debug("Starting Generate L8 ARD for %s over %s MGRS Tile ...",
-            args.l8c2l2_prd_ids, args.s2_tile_id)
-
-        try:
-            generate_l8_ard_from_pids(args.l8c2l2_prd_ids,
-                args.s2_tile_id,
-                args.out_dirpath,
-                args.prod_id,
-                only_sr=args.only_sr,
-                only_sr_mask=args.only_sr_mask,
-                only_tir=args.only_tir,
-                no_upload=args.no_upload,
-                debug=args.debug)
-        except L8ARDProcessorError as exc:
-            _logger.critical(exc)
-            sys.exit(exc.exit_code)
-        else:
-            _logger.info("Generation of L8 ARD for %s over %s MGRS Tile is ended!",
-                args.l8c2l2_prd_ids, args.s2_tile_id)
-
-    elif args.subparser_name == "wp":
-
-        _logger.debug("Starting Generate L8 ARD for the workplan %s ...", args.wp)
-
-        run_l8_plan(args.wp,
+    try:
+        generate_l8_ard_from_pids(args.l8c2l2_prd_ids,
+            args.s2_tile_id,
             args.out_dirpath,
             args.prod_id,
             only_sr=args.only_sr,
@@ -262,8 +187,12 @@ def main(arguments: List[str])->None:
             only_tir=args.only_tir,
             no_upload=args.no_upload,
             debug=args.debug)
-
-        _logger.info("Generation of the EWoC workplan %s for L8 part is ended!", args.wp)
+    except L8ARDProcessorError as exc:
+        _logger.critical(exc)
+        sys.exit(exc.exit_code)
+    else:
+        _logger.info("Generation of L8 ARD for %s over %s MGRS Tile is ended!",
+            args.l8c2l2_prd_ids, args.s2_tile_id)
 
 def run()->None:
     """Calls :func:`main` passing the CLI arguments extracted from :obj:`sys.argv`
