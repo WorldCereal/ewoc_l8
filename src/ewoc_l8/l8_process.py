@@ -217,7 +217,7 @@ def generate_l8_ard(
     :param no_upload: If True the ard files are not uploaded to s3 bucket, default to False
     :param debug: If True all the intermediate files and results will be kept locally,
          default to False
-    :return: Nothing
+    :return: Number of uploded objects and list of s3 paths
     """
     res_dict = {
         "B2": "10",
