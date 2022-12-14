@@ -1,3 +1,5 @@
+""" CLI to download and process LANDSAT-8 data identify by their product ID.
+"""
 import argparse
 from datetime import datetime
 import logging
