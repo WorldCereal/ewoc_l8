@@ -62,7 +62,7 @@ def run_l8_plan(
     for s2_tile in plan:
         l8_tirs = plan[s2_tile]["L8_TIRS"]
         for tr_group in l8_tirs:
-            generate_l8_ard(
+            upload_count, path_list = generate_l8_ard(
                 tr_group,
                 production_id,
                 s2_tile,
@@ -103,7 +103,7 @@ def generate_l8_ard_from_pids(
         production_id=_get_default_prod_id()
 
     try:
-        generate_l8_ard(
+        upload_count, path_list = generate_l8_ard(
             pid_group,
             production_id,
             s2_tile,

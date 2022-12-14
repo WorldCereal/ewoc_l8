@@ -202,7 +202,7 @@ def generate_l8_ard(
     only_tir: bool = False,
     no_upload: bool = False,
     debug: bool = False
-)->None:
+)->Tuple[int,List[str]]:
     """
     Process a group of Landsat-8 ids, full bands or thermal only
     :param tr_group: A list of s3 ids for Landsat-8 raster on the usgs-landsat bucket
@@ -294,6 +294,8 @@ def generate_l8_ard(
         )
         print(logging_string)
 
+    return upload_count, path_list
+
 
 def get_band_key(band: str, prd_id: str)->Tuple[date,Optional[str]]:
     """
@@ -323,7 +325,7 @@ if __name__ == "__main__":
 
     _S2_TILE_ID = "30SVG"
 
-    generate_l8_ard(
+    upload_count, path_list = generate_l8_ard(
         ["LC08_L1TP_201035_20191022_20200825_02_T1",
         "LC08_L1TP_201034_20191022_20200825_02_T1"],
         _S2_TILE_ID,
