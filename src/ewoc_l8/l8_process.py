@@ -246,7 +246,7 @@ def generate_l8_ard(
     elif only_tir:
         process_bands = ["B10", "QA_PIXEL_TIR"]
     else:
-        process_bands = ["QA_PIXEL_TIR", "B2", "B3", "B4", "B5", "B6", "B7", "B10", "QA_PIXEL_SR"]
+        process_bands = ["B2", "B3", "B4", "B5", "B6", "B7", "QA_PIXEL_SR", "B10", "QA_PIXEL_TIR"]
     logger.info("Following bands will be processed: %s", process_bands)
 
     t_srs, bnds = get_tile_info(s2_tile)
@@ -257,22 +257,31 @@ def generate_l8_ard(
 
     for band in process_bands:
         logger.info("Processing %s band", band)
-        up_count, up_size, upload_path, bucket_name = generate_l8_band_ard(
-            band,
-            tr_group,
-            production_id,
-            t_srs,
-            s2_tile,
-            bnds,
-            res=res_dict[band],
-            out_dir=out_dir,
-            no_upload=no_upload,
-            debug=debug,
-        )
-        upload_count += up_count
-        total_size += up_size
-        if str(Path(upload_path).parent) not in paths:
-            paths.append(str(Path(upload_path).parent))
+        tr_group_filtered = tr_group
+        if (band == "B10" or band == "QA_PIXEL_TIR") and not only_tir:
+            tr_group_filtered = [item for item in tr_group if "L2SR" not in item]
+            count_l2sr = len(tr_group) - len(tr_group_filtered)
+            if count_l2sr!=0:
+                logger.warning("%s L2SR products are removed as they are not compatible with TIR processing", count_l2sr)
+        if not tr_group_filtered:
+            pass
+        else:
+            up_count, up_size, upload_path, bucket_name = generate_l8_band_ard(
+                band,
+                tr_group_filtered,
+                production_id,
+                t_srs,
+                s2_tile,
+                bnds,
+                res=res_dict[band],
+                out_dir=out_dir,
+                no_upload=no_upload,
+                debug=debug,
+            )
+            upload_count += up_count
+            total_size += up_size
+            if str(Path(upload_path).parent) not in paths:
+                paths.append(str(Path(upload_path).parent))
     optic_path = None
     tir_path = None
     for path in paths:
