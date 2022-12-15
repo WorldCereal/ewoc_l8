@@ -29,6 +29,8 @@ class L8ARDProcessorError(Exception):
 # ---- API ----
 
 def _get_default_prod_id()->str:
+    """Get default prod_id"""
+
     str_now=datetime.now().strftime("%Y%m%dT%H%M%S")
     return f"0000_000_{str_now}"
 
