@@ -201,6 +201,13 @@ def execute_cmd(cmd: str)->None:
             shell=True,
             check=True)
     except subprocess.CalledProcessError as err:
-        logger.error('Following error code %s \
+        logger.error(
+            'Following error code %s \
             occurred while running command %s with following output:\
-            %s / %s', err.returncode, err.cmd, err.stdout, err.stderr)
+            %s / %s',
+            err.returncode,
+            err.cmd,
+            err.stdout,
+            err.stderr
+        )
+        raise RuntimeError from err

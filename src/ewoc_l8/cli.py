@@ -71,6 +71,11 @@ def generate_l8_ard_from_pids(
             no_upload=no_upload,
             debug=debug,
         )
+        if not no_upload:
+            logging_string = f"Uploaded {upload_count} tif files to bucket |" + (
+            " ; ".join(path_list)
+            )
+            _logger.info(logging_string)
     except L8ARDProcessorBaseError as exc:
         _logger.error(exc)
         raise L8ARDProcessorError(s2_tile, pid_group, exc.exit_code) from exc
