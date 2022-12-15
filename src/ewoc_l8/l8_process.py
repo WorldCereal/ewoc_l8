@@ -26,7 +26,6 @@ class L8ARDProcessorBaseError(Exception):
 
 class L8InputProcessorError(L8ARDProcessorBaseError):
     """Exception raised for errors in the L8 ARD generation at input download step."""
-
     def __init__(self, prd_ids):
         super().__init__(EWOC_L8_INPUT_DOWNLOAD_ERROR, prd_ids)
 
@@ -61,7 +60,7 @@ def generate_l8_band_ard(
          should be deleted on full completion
     :param no_upload: If True the ard files are not uploaded to s3 bucket
     :param debug: If True all the intermediate files and results will be kept locally
-    :return: Nothing
+    :return: Number of uploaded objects (0 or 1), size of uploaded object, upload path and bucket name 
     """
     # Create list of same bands but different dates
     l8_to_s2 = {
@@ -296,13 +295,12 @@ def generate_l8_ard(
 
     return upload_count, path_list
 
-
 def get_band_key(band: str, prd_id: str)->Tuple[date,Optional[str]]:
     """
     Get the S3 band id from band name
     :param band: Band number B2/B3/B4/B5/B6/B7/B10/QA
     :param tr: Thermal band s3 id
-    :return: date of the product and the s3 key
+    :return: The date of the product and the s3 key
     """
     sr_bands = ["B2", "B3", "B4", "B5", "B6", "B7"]
     qa_bands = ["QA_PIXEL_SR", "QA_PIXEL_TIR"]
@@ -319,7 +317,6 @@ def get_band_key(band: str, prd_id: str)->Tuple[date,Optional[str]]:
         ValueError("Band ID {band} not valid!")
 
     return L8C2PrdIdInfo(prd_id).acquisition_date, key
-
 
 if __name__ == "__main__":
 
