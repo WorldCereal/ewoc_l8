@@ -20,6 +20,14 @@ def ard_from_key(
     s2_tile: str,
     band_num: str,
     out_dir: Optional[Path] = None)->Path:
+    """
+    Get ARD path from s3 key.
+    :param key: s3 key
+    :param s2_tile: S2 tile id
+    :param band_num: Band number, B02 for example
+    :param out_dir: The output directory
+    :return: The raster path
+    """
     sr_bands = ["B2", "B3", "B4", "B5", "B6", "B7", "QA_PIXEL_SR"]
     st_bands = ["B10", "QA_PIXEL_TIR"]
     if band_num in sr_bands:
@@ -49,6 +57,11 @@ def ard_from_key(
     return raster_fn
 
 def get_tile_info(s2_tile_id: str)-> Tuple[str,Tuple[float, float, float, float]]:
+    """
+    Get SRS and bounding box of S2 tile.
+    :param s2_tile_id: S2 tile id
+    :return: SRS and bounding box of the tile
+    """
     s2_tile = main(s2_tile_id)[0]
     s2_tile_srs = (s2_tile["SRS"].values)[0]
     logger.info("SRS of %s is %s", s2_tile_id, s2_tile_srs)
@@ -61,6 +74,11 @@ def get_tile_info(s2_tile_id: str)-> Tuple[str,Tuple[float, float, float, float]
     return s2_tile_srs, s2_tile_bb
 
 def key_from_id(pid: str)->str:
+    """
+    Determine s3 key from product id.
+    :param pid: Landsat-8 product id
+    :return: s3 key
+    """
     info = pid.split("_")
     date1 = info[3]
     date2 = info[4]
@@ -70,6 +88,11 @@ def key_from_id(pid: str)->str:
     return key
 
 def get_mask(sr_qa_pix: Path)->Path:
+    """
+    Construct binary cloud mask.
+    :param sr_qa_pix: The input raster
+    :return: The masked raster
+    """
     with rasterio.open(sr_qa_pix, "r") as src:
         meta = src.meta.copy()
         meta["dtype"] = "uint8"
@@ -121,7 +144,7 @@ def rescale_array(array:NDArray[int], factors: Dict[str, float])->NDArray[int]:
     Applies array * factors['a'] + factors['b']
     :param array: The input array
     :param factors: A dictionary containing the integer factors
-    :return:
+    :return: The rescaled array
     """
     logger.info("Rescaling Raster values")
     array = array * factors["a"] + factors["b"]
@@ -135,13 +158,13 @@ def raster_to_ard(raster_path: Path,
     prd_date: date,
     l8_ids: List[str])->None:
     """
-    Read raster and update internals to fit ewoc ard specs
+    Read raster and update internals to fit ewoc ard specs.
     :param raster_path: Path to raster file
     :param band_num: Band number, B02 for example
     :param raster_fn: Output raster path
     :param date: Output raster date
     :param l8_ids: A list of s3 ids for Landsat-8 raster on the usgs-landsat bucket
-    :param factors: dictionary of factors for a rescale of the raster values
+    :param factors: A dictionary of factors for a rescale of the raster values
     """
     s2_scaling_factor = 10000
     factors = {
@@ -190,7 +213,7 @@ def raster_to_ard(raster_path: Path,
 
 def execute_cmd(cmd: str)->None:
     """
-    Execute the given cmd.
+    Execute the given cmd and raise error if not working.
     :param cmd: The command and its parameters to execute
     """
     logger.debug("Launching command: %s", cmd)
@@ -201,6 +224,13 @@ def execute_cmd(cmd: str)->None:
             shell=True,
             check=True)
     except subprocess.CalledProcessError as err:
-        logger.error('Following error code %s \
+        logger.error(
+            'Following error code %s \
             occurred while running command %s with following output:\
-            %s / %s', err.returncode, err.cmd, err.stdout, err.stderr)
+            %s / %s',
+            err.returncode,
+            err.cmd,
+            err.stdout,
+            err.stderr
+        )
+        raise RuntimeError from err
