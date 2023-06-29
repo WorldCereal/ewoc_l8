@@ -56,8 +56,8 @@ jobs:
 
     - name: Build package
       run: |
-        python -m build
         python -m pip install build
+        python -m build
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v3.1.1
