@@ -26,14 +26,13 @@ class L8ARDProcessorBaseError(Exception):
 
 class L8InputProcessorError(L8ARDProcessorBaseError):
     """Exception raised for errors in the L8 ARD generation at input download step."""
-
     def __init__(self, prd_ids):
         super().__init__(EWOC_L8_INPUT_DOWNLOAD_ERROR, prd_ids)
 
     def __str__(self):
         return f"{self._message} {self._l8_prd_ids} not download !"
 
-def process_group_band(
+def generate_l8_band_ard(
     band_num: str,
     tr_group: List[str],
     production_id: str,
@@ -61,7 +60,7 @@ def process_group_band(
          should be deleted on full completion
     :param no_upload: If True the ard files are not uploaded to s3 bucket
     :param debug: If True all the intermediate files and results will be kept locally
-    :return: Nothing
+    :return: Number of uploaded objects (0 or 1), size of uploaded object, upload path and bucket name 
     """
     # Create list of same bands but different dates
     l8_to_s2 = {
@@ -192,7 +191,7 @@ def process_group_band(
         if not debug:
             shutil.rmtree(src_folder)
 
-def process_group(
+def generate_l8_ard(
     tr_group: List[str],
     production_id: str,
     s2_tile: str,
@@ -202,7 +201,7 @@ def process_group(
     only_tir: bool = False,
     no_upload: bool = False,
     debug: bool = False
-)->None:
+)->Tuple[int,List[str]]:
     """
     Process a group of Landsat-8 ids, full bands or thermal only
     :param tr_group: A list of s3 ids for Landsat-8 raster on the usgs-landsat bucket
@@ -217,7 +216,7 @@ def process_group(
     :param no_upload: If True the ard files are not uploaded to s3 bucket, default to False
     :param debug: If True all the intermediate files and results will be kept locally,
          default to False
-    :return: Nothing
+    :return: Number of uploaded objects and list of s3 paths
     """
     res_dict = {
         "B2": "10",
@@ -258,7 +257,7 @@ def process_group(
 
     for band in process_bands:
         logger.info("Processing %s band", band)
-        up_count, up_size, upload_path, bucket_name = process_group_band(
+        up_count, up_size, upload_path, bucket_name = generate_l8_band_ard(
             band,
             tr_group,
             production_id,
@@ -294,13 +293,14 @@ def process_group(
         )
         print(logging_string)
 
+    return upload_count, path_list
 
 def get_band_key(band: str, prd_id: str)->Tuple[date,Optional[str]]:
     """
     Get the S3 band id from band name
     :param band: Band number B2/B3/B4/B5/B6/B7/B10/QA
     :param tr: Thermal band s3 id
-    :return: date of the product and the s3 key
+    :return: The date of the product and the s3 key
     """
     sr_bands = ["B2", "B3", "B4", "B5", "B6", "B7"]
     qa_bands = ["QA_PIXEL_SR", "QA_PIXEL_TIR"]
@@ -318,12 +318,11 @@ def get_band_key(band: str, prd_id: str)->Tuple[date,Optional[str]]:
 
     return L8C2PrdIdInfo(prd_id).acquisition_date, key
 
-
 if __name__ == "__main__":
 
     _S2_TILE_ID = "30SVG"
 
-    process_group(
+    upload_count, path_list = generate_l8_ard(
         ["LC08_L1TP_201035_20191022_20200825_02_T1",
         "LC08_L1TP_201034_20191022_20200825_02_T1"],
         _S2_TILE_ID,
