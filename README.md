@@ -4,7 +4,7 @@
 
 This processor will:
 
-* Download [Landsat-8 Colection 2 Level-2](https://www.usgs.gov/landsat-missions/landsat-collection-2-level-2-science-products) products from the [usgs landsat aws bucket](https://registry.opendata.aws/usgs-landsat/)
+* Download [Landsat-8 Colection 2 Level-2 Science products](https://www.usgs.gov/landsat-missions/landsat-collection-2-level-2-science-products) from the [usgs landsat aws bucket](https://registry.opendata.aws/usgs-landsat/)
 * Merge and reproject the Landsat-8 data to the S2 grid
 * Convert the reprojected products into EWoC ARD format
 * Upload the processed files to a separate bucket in order to be used in the classification
