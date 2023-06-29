@@ -10,8 +10,7 @@ on:
 jobs:
   check-python:
 
-    # runs-on: ubuntu-20.04
-    runs-on: self-hosted
+    runs-on: ubuntu-20.04
 
     env:
       EWOC_DAG_VERSION: "0.9.0"
