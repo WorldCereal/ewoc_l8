@@ -54,11 +54,3 @@ Compute EWoC SR ARD mask for a couple of L8 C2 L2 products:
 ```bash
 ewoc_generate_l8_ard --only-sr-mask 31TCJ LC08_L2SP_199029_20211216_20211223_02_T1 LC08_L2SP_199030_20211216_20211223_02_T1
 ```
-
-### CLI Docker
-
-You can use the docker image to run this processor as described in this simple example:
-
-```bash
-sudo docker run -ti --rm --env-file env.dev <docker_image_id> ewoc_generate_l8_ard -v --only-tir --prod-id c728b264-5c97-4f4c-81fe-1500d4c4dfbd_7091_20220916010500 31TCJ LC08_L2SP_199029_20211216_20211223_02_T1 LC08_L2SP_199030_20211216_20211223_02_T1
-```
